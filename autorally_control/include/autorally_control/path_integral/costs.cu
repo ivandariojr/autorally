@@ -403,6 +403,7 @@ inline __device__ float MPPICosts::terminalCost(float* s)
   return 0.0;
 }
 
+
 }
 
 

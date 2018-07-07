@@ -40,6 +40,7 @@
 #include <autorally_control/path_integral/param_getter.h>
 
 #include <autorally_control/path_integral/costs.cuh>
+#include <autorally_control/path_integral/obs_costs.cuh>
 #include <autorally_control/path_integral/generalized_linear.cuh>
 
 //Including neural net model
@@ -78,7 +79,17 @@ typedef GeneralizedLinear<CarBasisFuncs, 7, 2, 25, CarKinematics, 3> DynamicsMod
 #endif
 
 //Convenience typedef for the MPPI Controller.
+#ifdef USE_OBSTACLE_COST__
+
+typedef MPPIController<DynamicsModel, MPPIObsCosts, MPPI_NUM_ROLLOUTS__, BLOCKSIZE_X, BLOCKSIZE_Y> Controller;
+typedef MPPIObsCosts ControlCosts;
+
+#else
+
 typedef MPPIController<DynamicsModel, MPPICosts, MPPI_NUM_ROLLOUTS__, BLOCKSIZE_X, BLOCKSIZE_Y> Controller;
+typedef MPPICosts ControlCosts;
+
+#endif
 
 int main(int argc, char** argv) {
   //Ros node initialization
@@ -90,7 +101,7 @@ int main(int argc, char** argv) {
   loadParams(&params, mppi_node);
 
   //Define the mppi costs
-  MPPICosts* costs = new MPPICosts(mppi_node);
+  ControlCosts* costs = new ControlCosts(mppi_node);
 
   //Define the internal dynamics model for mppi
   float2 control_constraints[2] = {make_float2(-.99, .99), make_float2(-.99, params.max_throttle)};

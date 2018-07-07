@@ -64,7 +64,7 @@ namespace autorally_control {
 class MPPICosts: public Managed
 {
 public:
- 
+
   //Struct for holding various cost parameters.
   typedef struct
   {

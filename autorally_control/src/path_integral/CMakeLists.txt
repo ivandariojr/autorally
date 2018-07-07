@@ -87,6 +87,24 @@ target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_L
 
 remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__)
 
+###################################################################################
+#Executable for the neural network model with obstacles
+###################################################################################
+
+add_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST)
+
+cuda_add_executable(path_integral_nn_obs
+					path_integral_main.cu
+					autorally_plant
+					param_getter
+					)
+
+add_dependencies(path_integral_nn_obs autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
+
+target_link_libraries(path_integral_nn_obs /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST)
+
 ####################################################################################
 #Executable for monitoring the status of mppi
 ####################################################################################
