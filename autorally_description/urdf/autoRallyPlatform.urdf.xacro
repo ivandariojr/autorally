@@ -44,7 +44,6 @@ limitations under the License.
   <xacro:property name="chassis_cm_to_rear_shock" value="0.23"/>
   <xacro:property name="chassis_cm_to_front_shock" value="0.34"/>
 
-
   <!-- hub_dia and tire_dia are the diameters of the hub and tire,
        respectively. hex_hub_depth is the distance that the hex hub is
        inset from the outer edge of the tire. It is set so that each wheel
@@ -471,6 +470,16 @@ limitations under the License.
       <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
     </inertial>
 
+  </link>
+
+  <!-- Reference frame for left camera (for stereo camera)-->
+  <joint name="left_camera_optical_joint" type="fixed">
+    <origin xyz="0 0.07 0" rpy="0 0 0"/>
+    <parent link="camera_link"/>
+    <child link="left_camera_optical_frame"/>
+  </joint>
+
+  <link name="left_camera_optical_frame">
   </link>
 
   <!-- camera -->
