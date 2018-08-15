@@ -91,7 +91,7 @@ remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__
 #Executable for the neural network model with obstacles
 ###################################################################################
 
-add_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST)
+add_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST__)
 
 cuda_add_executable(path_integral_nn_obs
 					path_integral_main.cu

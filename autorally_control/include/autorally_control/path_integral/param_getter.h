@@ -56,6 +56,7 @@ typedef struct
   float throttle_std;
   float max_throttle;
   std::string model_path;
+  std::string obstacle_path;
 } SystemParams;
 
 void loadParams(SystemParams* params, ros::NodeHandle mppi_node);

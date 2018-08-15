@@ -81,8 +81,8 @@ typedef GeneralizedLinear<CarBasisFuncs, 7, 2, 25, CarKinematics, 3> DynamicsMod
 //Convenience typedef for the MPPI Controller.
 #ifdef USE_OBSTACLE_COST__
 
-typedef MPPIController<DynamicsModel, MPPIObsCosts, MPPI_NUM_ROLLOUTS__, BLOCKSIZE_X, BLOCKSIZE_Y> Controller;
-typedef MPPIObsCosts ControlCosts;
+typedef MPPIController<DynamicsModel, MPPIObstacleCosts, MPPI_NUM_ROLLOUTS__, BLOCKSIZE_X, BLOCKSIZE_Y> Controller;
+typedef MPPIObstacleCosts ControlCosts;
 
 #else
 
