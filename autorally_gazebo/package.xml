@@ -31,6 +31,9 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>roscpp</build_depend>
+  <build_depend>gazebo_ros</build_depend>
+
   <run_depend>controller_manager</run_depend>
   <run_depend>gazebo_ros</run_depend>
   <run_depend>gazebo_ros_control</run_depend>
@@ -43,5 +46,5 @@
   <run_depend>joy</run_depend>
   <run_depend>effort_controllers</run_depend>
   <run_depend>joint_state_controller</run_depend>
-
+  <run_depend>roscpp</run_depend>
 </package>

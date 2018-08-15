@@ -1,9 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(autorally_gazebo)
-find_package(catkin REQUIRED)
+
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  gazebo_ros
+)
+
 catkin_python_setup()
 
-catkin_package()
+catkin_package(
+  DEPENDS
+    roscpp
+    gazebo_ros
+)
+
+add_subdirectory(plugins)
 
 install(PROGRAMS
   nodes/autorally_controller.py
@@ -18,3 +29,4 @@ install(DIRECTORY config/
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
    FILES_MATCHING PATTERN "*.yaml"
 )
+
