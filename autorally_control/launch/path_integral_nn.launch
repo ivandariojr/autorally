@@ -5,7 +5,8 @@
     pkg = "autorally_control" 
     type = "path_integral_nn" 
     name = "mppi_controller"
-    output = "screen">
+    output = "screen"
+    launch-prefix = "nvprof --print-gpu-trace --csv --log-file path_integral_prof.csv">
     
     <!--Pose topic configuration parameters -->
     <param name="pose_estimate" value="/pose_estimate" />
@@ -41,7 +42,7 @@
     <param name="min_steering" value="-0.99" />
 
     <!-- Cost Parameters -->
-    <param name="desired_speed" value="7.0" />
+    <param name="desired_speed" value="4.5" />
     <param name="speed_coefficient" value="4.25" />
     <param name="track_coefficient" value="100.0" />
     <param name="max_slip_angle" value="1.25" />
