@@ -43,6 +43,11 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
+
 #include <autorally_msgs/chassisCommand.h>
 #include <autorally_msgs/chassisState.h>
 #include <autorally_msgs/runstop.h>
@@ -122,6 +127,11 @@ public:
   void servoCall(autorally_msgs::chassisState servo_msg);
 
   /**
+  * @brief Callback for point cloud.
+  */
+  void pointsCall(pcl::PointCloud<pcl::PointXYZ> points_msg);
+
+  /**
   * @brief Callback for safe speed subscriber.
   */
 	void runstopCall(autorally_msgs::runstop safe_msg);
@@ -186,6 +196,8 @@ private:
   bool debug_mode_; ///< Whether or not the system is in debug/simulation mode.
   bool activated_; ///< Whether or not we've received an initial pose message.
 
+  pcl::PointCloud<pcl::PointXYZ> tf_points_; ///< Transformed point cloud.
+
   ros::Time last_check_; //Timestamp of the last published control.
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
 
@@ -195,6 +207,9 @@ private:
   ros::Publisher default_path_pub_; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
+  ros::Subscriber points_sub_; ///< Subscriber to /stereo/points2.
+
+  tf::TransformListener pc_listener_; ///< TransformListener to pc_frame
 
   autorally_msgs::chassisCommand control_msg_; ///< Autorally control message initialization.
   nav_msgs::Path path_msg_; ///< Path message for publishing the planned path.

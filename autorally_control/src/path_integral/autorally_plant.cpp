@@ -55,6 +55,8 @@ AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int h
   pose_sub_ = mppi_node.subscribe("/pose_estimate", 1, &AutorallyPlant::poseCall, this);
   //Initialize the servo subscriber
   servo_sub_ = mppi_node.subscribe("chassisState", 1, &AutorallyPlant::servoCall, this);
+  //Initialize the point cloud subscriber
+  points_sub_ = mppi_node.subscribe("/stereo/points2", 1, &AutorallyPlant::pointsCall, this);
   //Initialize auxiliary variables.
   safe_speed_zero_ = false;
   debug_mode_ = debug_mode;
@@ -127,6 +129,23 @@ void AutorallyPlant::runstopCall(autorally_msgs::runstop safe_msg)
   if (safe_msg.motionEnabled == false){
     safe_speed_zero_ = true;
   }
+}
+
+void AutorallyPlant::pointsCall(pcl::PointCloud<pcl::PointXYZ> points_msg)
+{
+  tf::StampedTransform transform;
+  tf::Vector3 translation;
+
+  //Grab transform from the camera's optical frame to the state estimator frame
+  pc_listener_.waitForTransform("pc_frame", points_msg.header.frame_id, ros::Time(0), ros::Duration(5.0));
+  pc_listener_.lookupTransform("pc_frame", points_msg.header.frame_id, ros::Time(0), transform);
+
+  //Offset by the autorally position
+  translation = transform.getOrigin() + tf::Vector3(full_state_.x_pos, full_state_.y_pos, full_state_.z_pos);
+  transform.setOrigin(translation);
+
+  //Apply the transformation
+  pcl_ros::transformPointCloud(points_msg, tf_points_, transform);
 }
 
 void AutorallyPlant::pubPath(float* nominal_traj, int num_timesteps, int hz)

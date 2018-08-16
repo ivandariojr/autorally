@@ -2,9 +2,15 @@ cmake_minimum_required(VERSION 2.8.3)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen REQUIRED)
+find_package(PCL REQUIRED)
+find_package(Boost 1.6.0 REQUIRED)
+
+set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
 
 include_directories(include ${OpenCV_INCLUDE_DIRS})
 include_directories(include ${EIGEN_INCLUDE_DIRS})
+include_directories(include ${PCL_INCLUDE_DIRS})
+include_directories(include ${Boost_INCLUDE_DIR})
 
 ################################################################################
 #First make the helper libraries
@@ -65,7 +71,7 @@ cuda_add_executable(path_integral_bf
 
 add_dependencies(path_integral_bf autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(path_integral_bf /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(path_integral_bf /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
 
 remove_definitions(-DUSE_BASIS_FUNC_MODEL__)
 
@@ -83,27 +89,9 @@ cuda_add_executable(path_integral_nn
 
 add_dependencies(path_integral_nn autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
 
 remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__)
-
-###################################################################################
-#Executable for the neural network model with obstacles
-###################################################################################
-
-add_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST__)
-
-cuda_add_executable(path_integral_nn_obs
-					path_integral_main.cu
-					autorally_plant
-					param_getter
-					)
-
-add_dependencies(path_integral_nn_obs autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
-
-target_link_libraries(path_integral_nn_obs /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
-
-remove_definitions(-DUSE_NEURAL_NETWORK_MODEL__ -DMPPI_NNET_USING_CONSTANT_MEM__ -DUSE_OBSTACLE_COST)
 
 ####################################################################################
 #Executable for monitoring the status of mppi
