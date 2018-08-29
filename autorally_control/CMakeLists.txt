@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
 )
 
-find_package(Boost 1.6.0 REQUIRED)
+find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
 
 set(BUILD_FLAGS "-std=c++11 -Wuninitialized")
