@@ -39,6 +39,9 @@
 #include <ros/ros.h>
 #include <dynamic_reconfigure/server.h>
 
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/PointCloud2.h>
+
 #include <cuda_runtime.h>
 #include <vector>
 #include <eigen3/Eigen/Dense>
@@ -71,6 +74,7 @@ public:
     float desired_speed;
     float speed_coeff;
     float track_coeff;
+    float obstacle_coeff;
     float max_slip_ang;
     float slip_penalty;
     float track_slop;
@@ -81,6 +85,7 @@ public:
     float discount;
     int num_timesteps;
     int grid_res;
+    int obstacle_pad;
     float3 r_c1;
     float3 r_c2;
     float3 trs;
@@ -132,6 +137,12 @@ public:
   * @param trs Array representing the offset. 
   */
   void updateTransform(Eigen::MatrixXf h, Eigen::ArrayXf trs);
+
+  /*
+  * @brief Use point cloud to update the obstacle map
+  * @param points
+  */
+  void updateObstacleMap(sensor_msgs::PointCloud2Ptr points);
 
   /*
   * @brief Loads track data from a file.
@@ -220,6 +231,11 @@ public:
   __device__ float getTrackCost(float* s, int* crash);
 
   /*
+  * @brief Compute the current obstacle cost based on the obstaclemap.
+  */
+  __device__ float getObstacleCost(float* s, int* crash);
+
+  /*
   * @brief Compute all of the individual cost terms and adds them together.
   */
   __device__ float computeCost(float* s, float* u, float* du, float* vars, int* crash, int t);
@@ -237,11 +253,16 @@ protected:
 
   //Primary variables
   int width_, height_; ///< Width and height of costmap.
+  float resolution_; ///< Resolution of costmap.
+  int x_min_, y_min_; ///< Space defined by costmap.
   CostParams* params_d_; ///< Device side copy of params_.
   cudaArray *costmapArray_d_; ///< Cuda array for texture binding.
+  cudaArray *obstaclemapArray_d_; ///< Cuda array for texture binding of obstacle map.
   cudaChannelFormatDesc channelDesc_; ///< Cuda texture channel description.
   cudaTextureObject_t costmap_tex_; ///< Cuda texture object.
-  
+  cudaTextureObject_t obstaclemap_tex_; ///< Cuda texture object.
+  struct cudaTextureDesc texDesc_;
+
   //Debugging variables
   float* debug_data_; ///< Host array for holding debug info.
   float* debug_data_d_; ///< Device array for holding debug info.

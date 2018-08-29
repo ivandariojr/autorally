@@ -43,10 +43,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 
-#include <tf/transform_listener.h>
-#include <tf/transform_datatypes.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
+#include <sensor_msgs/PointCloud2.h>
 
 #include <autorally_msgs/chassisCommand.h>
 #include <autorally_msgs/chassisState.h>
@@ -54,6 +51,8 @@
 #include <autorally_msgs/pathIntegralStatus.h>
 
 #include <eigen3/Eigen/Dense>
+
+#include <chrono>
 
 namespace autorally_control {
 
@@ -129,7 +128,7 @@ public:
   /**
   * @brief Callback for point cloud.
   */
-  void pointsCall(pcl::PointCloud<pcl::PointXYZ> points_msg);
+  void pointsCall(sensor_msgs::PointCloud2Ptr points_msg);
 
   /**
   * @brief Callback for safe speed subscriber.
@@ -172,6 +171,17 @@ public:
   ros::Time getLastPoseTime();
 
   /**
+  * @brief Returns the timestamp of the last point cloud callback.
+  */
+  ros::Time getLastPointCloudTime();
+
+  /**
+  * @brief Returns the current point cloud from the stereo camera
+  */
+  //std::vector<pcl::PointXY> getPointCloud();
+  sensor_msgs::PointCloud2Ptr getPointCloud();
+
+  /**
   * @brief Checks the system status.
   * @return An integer specifying the status. 0 means the system is operating
   * nominally, 1 means something is wrong but no action needs to be taken,
@@ -196,10 +206,9 @@ private:
   bool debug_mode_; ///< Whether or not the system is in debug/simulation mode.
   bool activated_; ///< Whether or not we've received an initial pose message.
 
-  pcl::PointCloud<pcl::PointXYZ> tf_points_; ///< Transformed point cloud.
-
   ros::Time last_check_; //Timestamp of the last published control.
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
+  ros::Time last_pc_call_; ///< Timestamp of the last point cloud callback.
 
   ros::Publisher control_pub_; ///< Publisher of autorally_msgs::chassisCommand type on topic servoCommand.
   ros::Publisher status_pub_; ///< Publishes the status (0 good, 1 neutral, 2 bad) of the controller
@@ -207,9 +216,11 @@ private:
   ros::Publisher default_path_pub_; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
-  ros::Subscriber points_sub_; ///< Subscriber to /stereo/points2.
+  ros::Subscriber points_sub_; ///< Subscriber to /stereo/filtered_points2.
 
-  tf::TransformListener pc_listener_; ///< TransformListener to pc_frame
+  sensor_msgs::PointCloud2Ptr points_;
+  //pcl::PointCloud<pcl::PointXYZ> points_;
+  //std::vector<pcl::PointXY> points_; ///< 2D points extracted from point cloud
 
   autorally_msgs::chassisCommand control_msg_; ///< Autorally control message initialization.
   nav_msgs::Path path_msg_; ///< Path message for publishing the planned path.

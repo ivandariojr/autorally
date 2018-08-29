@@ -37,7 +37,7 @@
 
 #include "autorally_plant.h"
 #include "param_getter.h"
-
+#include <chrono>
 #include <ros/ros.h>
 
 namespace autorally_control {
@@ -58,12 +58,16 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   AutorallyPlant robot(mppi_node, params.debug_mode, params.hz);
   AutorallyPlant::FullState fs;
 
+  //std::vector<pcl::PointXY> points;
+  sensor_msgs::PointCloud2Ptr points;
+
   //Set the loop rate
   ros::Rate loop_rate(params.hz);
 
   //Counter and timing variables.
   int num_iter = 0;
   ros::Time last_pose_update = robot.getLastPoseTime();
+  ros::Time last_pc_update = robot.getLastPointCloudTime();
 
   ros::Publisher path_pub; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Publisher ips_pub; ///< Publisher of nav_mags::Path on topic importance sampler.
@@ -71,8 +75,13 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   path_pub = mppi_node.advertise<nav_msgs::Path>("nominal_path_debug", 1);
   ips_pub = mppi_node.advertise<nav_msgs::Path>("importance_sampler", 1);
 
+  //ros::AsyncSpinner spinner(8); ///< TODO: Make thread count a parameter
+  //spinner.start();
+
   //Start the control loop.
   while (ros::ok()) {
+    std::chrono::time_point<std::chrono::high_resolution_clock> t1l = std::chrono::high_resolution_clock::now();
+
     if (params.debug_mode){ //Display the debug window.
      controller.costs_->debugDisplay(state(0), state(1));
     }
@@ -81,6 +90,17 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
       last_pose_update = robot.getLastPoseTime();
       fs = robot.getState(); //Get the new state.
       state << fs.x_pos, fs.y_pos, fs.yaw, fs.roll, fs.u_x, fs.u_y, fs.yaw_mder;
+    }
+
+    if (last_pc_update != robot.getLastPointCloudTime()){
+      last_pc_update = robot.getLastPointCloudTime();
+      points = robot.getPointCloud();
+
+      std::chrono::time_point<std::chrono::high_resolution_clock> t1 = std::chrono::high_resolution_clock::now();
+      controller.costs_->updateObstacleMap(points);
+      std::chrono::time_point<std::chrono::high_resolution_clock> t2 = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+      //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
     u = controller.computeControl(state); //Compute the control
@@ -113,8 +133,20 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
     ROS_DEBUG("Current State: (%f, %f, %f, %f, %f, %f, %f, %f, %f), Slip Angle: (%f), Avg. Iter Time: %f \n", 
               state(0), state(1), state(2), state(3), state(4), state(5), state(6), u(0), u(1),
               state(4) > 0.01 ? -atan(state(5)/fabs(state(4))) : 0,  controller.total_iter_time_/num_iter);
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> t2l = std::chrono::high_resolution_clock::now();
+    auto duration_l = std::chrono::duration_cast<std::chrono::milliseconds>( t2l - t1l ).count();
+    //ROS_INFO("TOTAL LOOP: %ld",duration_l);
+
     loop_rate.sleep(); //Sleep to get loop rate to match hz.
+    t2l = std::chrono::high_resolution_clock::now();
+    duration_l = std::chrono::duration_cast<std::chrono::milliseconds>( t2l - t1l ).count();
+    //ROS_INFO("AFTER SLEEP: %ld",duration_l);
+
     ros::spinOnce(); //Process subscriber callbacks.
+    t2l = std::chrono::high_resolution_clock::now();
+    duration_l = std::chrono::duration_cast<std::chrono::milliseconds>( t2l - t1l ).count();
+    //ROS_INFO("AFTER SPINNING: %ld",duration_l);
   }
 }
 

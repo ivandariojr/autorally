@@ -79,6 +79,8 @@ inline void MPPICosts::allocateTexMem()
   //Allocate memory for the cuda array which is bound the costmap_tex_
   channelDesc_ = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
   HANDLE_ERROR(cudaMallocArray(&costmapArray_d_, &channelDesc_, width_, height_));
+  //Allocate memory for the cuda array which is bound the obstaclemap_tex_
+  HANDLE_ERROR(cudaMallocArray(&obstaclemapArray_d_, &channelDesc_, width_, height_));
 }
 
 inline void MPPICosts::costmapToTexture(float* costmap)
@@ -93,19 +95,18 @@ inline void MPPICosts::costmapToTexture(float* costmap)
   resDesc.res.array.array = costmapArray_d_;
 
   //Specify texture object parameters
-  struct cudaTextureDesc texDesc;
-  memset(&texDesc, 0, sizeof(texDesc));
-  texDesc.addressMode[0] = cudaAddressModeClamp;
-  texDesc.addressMode[1] = cudaAddressModeClamp;
-  texDesc.filterMode = cudaFilterModeLinear;
-  texDesc.readMode = cudaReadModeElementType;
-  texDesc.normalizedCoords = 1;
+  memset(&texDesc_, 0, sizeof(texDesc_));
+  texDesc_.addressMode[0] = cudaAddressModeClamp;
+  texDesc_.addressMode[1] = cudaAddressModeClamp;
+  texDesc_.filterMode = cudaFilterModeLinear;
+  texDesc_.readMode = cudaReadModeElementType;
+  texDesc_.normalizedCoords = 1;
 
   //First destroy the current texture object
   HANDLE_ERROR(cudaDestroyTextureObject(costmap_tex_));
 
   //Now create the new texture object.
-  HANDLE_ERROR(cudaCreateTextureObject(&costmap_tex_, &resDesc, &texDesc, NULL) );
+  HANDLE_ERROR(cudaCreateTextureObject(&costmap_tex_, &resDesc, &texDesc_, NULL) );
 }
 
 inline void MPPICosts::updateParams_dcfg(autorally_control::PathIntegralParamsConfig &config, int lvl)
@@ -113,25 +114,29 @@ inline void MPPICosts::updateParams_dcfg(autorally_control::PathIntegralParamsCo
   params_.desired_speed = (float)config.desired_speed;
   params_.speed_coeff = (float)config.speed_coefficient;
   params_.track_coeff = (float)config.track_coefficient;
+  params_.obstacle_coeff = (float)config.obstacle_coefficient;
   params_.max_slip_ang = (float)config.max_slip_angle;
   params_.slip_penalty = (float)config.slip_penalty;
   params_.crash_coeff = (float)config.crash_coefficient;
   params_.track_slop = (float)config.track_slop;
   params_.steering_coeff = (float)config.steering_coeff;
   params_.throttle_coeff = (float)config.throttle_coeff;
+  params_.obstacle_pad = (int)config.obstacle_pad;
   paramsToDevice();
 }
 
 inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
 {
-  double desired_speed, speed_coeff, track_coeff, max_slip_ang, 
+  double desired_speed, speed_coeff, track_coeff, obstacle_coeff, max_slip_ang,
           slip_penalty, track_slop, crash_coeff, steering_coeff, throttle_coeff, 
           boundary_threshold, discount;
+  int obstacle_pad;
   int num_timesteps;
   //Read parameters from the ROS parameter server
   mppi_node.getParam("desired_speed", desired_speed);
   mppi_node.getParam("speed_coefficient", speed_coeff);
   mppi_node.getParam("track_coefficient", track_coeff);
+  mppi_node.getParam("obstacle_coefficient", obstacle_coeff);
   mppi_node.getParam("max_slip_angle", max_slip_ang);
   mppi_node.getParam("slip_penalty", slip_penalty);
   mppi_node.getParam("track_slop", track_slop);
@@ -141,12 +146,13 @@ inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
   mppi_node.getParam("num_timesteps", num_timesteps);
   mppi_node.getParam("boundary_threshold", boundary_threshold);
   mppi_node.getParam("discount", discount);
-
+  mppi_node.getParam("obstacle_pad", obstacle_pad);
 
   //Transfer to the cost params struct
   params_.desired_speed = (float)desired_speed;
   params_.speed_coeff = (float)speed_coeff;
   params_.track_coeff = (float)track_coeff;
+  params_.obstacle_coeff = (float)obstacle_coeff;
   params_.max_slip_ang = (float)max_slip_ang;
   params_.slip_penalty = (float)slip_penalty;
   params_.track_slop = (float)track_slop;
@@ -156,6 +162,7 @@ inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
   params_.boundary_threshold = (float)boundary_threshold;
   params_.discount = (float)discount;
   params_.num_timesteps = (int)num_timesteps;
+  params_.obstacle_pad = obstacle_pad;
   //Move the updated parameters to gpu memory
   paramsToDevice();
 }
@@ -174,6 +181,69 @@ inline void MPPICosts::updateTransform(Eigen::MatrixXf m, Eigen::ArrayXf trs){
   paramsToDevice();
 }
 
+inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
+{
+  sensor_msgs::PointCloud2Iterator<float> points_iter_x(*points, "x");
+  sensor_msgs::PointCloud2Iterator<float> points_iter_y(*points, "y");
+
+  int x, y, x_pt, y_pt;
+  int x_range_min, x_range_max, y_range_min, y_range_max;
+  int x_delta_sq, y_delta, y_delta_sq;
+  int obstacle_pad_sq = pow(params_.obstacle_pad, 2);
+  float inv_obstacle_pad = (float) 1/params_.obstacle_pad;
+  float scale;
+  std::vector<float> obstacle_costs(width_*height_, 0.);
+
+  //Build obstacle map
+  for (; points_iter_x != points_iter_x.end(); ++points_iter_x, ++points_iter_y) {
+    x = int(round(*points_iter_x * resolution_ - x_min_));
+    y = int(round(*points_iter_y * resolution_ - y_min_));
+
+    x_range_min = min(max(x-params_.obstacle_pad, 0), width_-1);
+    x_range_max = min(max(x+params_.obstacle_pad, 0), width_-1);
+
+    for (int x_idx = x_range_min; x_idx <= x_range_max; x_idx++) {
+      x_delta_sq = pow(x_idx-x,2);
+      y_delta = int(round(sqrt(-x_delta_sq + obstacle_pad_sq)));
+      y_range_min = min(max(y-y_delta, 0), height_-1);
+      y_range_max = min(max(y+y_delta, 0), height_-1);
+
+      for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
+        y_delta_sq = pow(y_idx-y,2);
+        scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
+        if (obstacle_costs[y_idx * width_ + x_idx] < 1. * scale) {
+          obstacle_costs[y_idx * width_ + x_idx] = 1. * scale;
+        }
+      }
+    }
+  }
+
+  //Transfer from CPU to GPU
+  HANDLE_ERROR( cudaMemcpyToArray(obstaclemapArray_d_, 0, 0, obstacle_costs.data(), width_*height_*sizeof(float),
+                                  cudaMemcpyHostToDevice) );
+
+  //Specify texture object parameters
+  struct cudaTextureDesc texDesc;
+  memset(&texDesc, 0, sizeof(texDesc));
+  texDesc.addressMode[0] = cudaAddressModeClamp;
+  texDesc.addressMode[1] = cudaAddressModeClamp;
+  texDesc.filterMode = cudaFilterModeLinear;
+  texDesc.readMode = cudaReadModeElementType;
+  texDesc.normalizedCoords = 1;
+
+  //Specify texture
+  struct cudaResourceDesc resDesc;
+  memset(&resDesc, 0, sizeof(resDesc));
+  resDesc.resType = cudaResourceTypeArray;
+  resDesc.res.array.array = obstaclemapArray_d_;
+
+  //First destroy the current texture object
+  HANDLE_ERROR(cudaDestroyTextureObject(obstaclemap_tex_));
+
+  //Now create the new texture object.
+  HANDLE_ERROR(cudaCreateTextureObject(&obstaclemap_tex_, &resDesc, &texDesc, NULL) );
+}
+
 inline std::vector<float> MPPICosts::loadTrackData(const char* costmap_path, Eigen::Matrix3f &R, Eigen::Array3f &trs)
 {
   int i;
@@ -189,17 +259,20 @@ inline std::vector<float> MPPICosts::loadTrackData(const char* costmap_path, Eig
     ros::shutdown();
   }
   //Read the parameters from the file
-  float x_min, x_max, y_min, y_max, resolution;
+  float x_min, x_max, y_min, y_max;
   bool success = true;
   success = success && fscanf(track_data_file, "%f", &x_min);
   success = success && fscanf(track_data_file, "%f", &x_max);
   success = success && fscanf(track_data_file, "%f", &y_min);
   success = success && fscanf(track_data_file, "%f", &y_max);
-  success = success && fscanf(track_data_file, "%f", &resolution);
+  success = success && fscanf(track_data_file, "%f", &resolution_);
   //Save width_ and height_ parameters
-  width_ = int((x_max - x_min)*resolution);
-  height_ = int((y_max - y_min)*resolution);
+  width_ = int((x_max - x_min)*resolution_);
+  height_ = int((y_max - y_min)*resolution_);
   std::vector<float> track_costs(width_*height_);
+  //Save distance spanned by track costs
+  x_min_ = int(x_min*resolution_);
+  y_min_ = int(y_min*resolution_);
   //Scan the result of the file to load track parameters
   for (i = 0; i < width_*height_; i++) {
     success = success && fscanf(track_data_file, "%f", &p);
@@ -259,7 +332,7 @@ inline void MPPICosts::debugDisplay(float x, float y)
     debugDisplayInit();
   }
   launchDebugCostKernel(x, y, debug_img_width_, debug_img_height_, debug_img_ppm_, 
-                        costmap_tex_, debug_data_d_, params_.r_c1, params_.r_c2, params_.trs);
+                        costmap_tex_, obstaclemap_tex_, debug_data_d_, params_.r_c1, params_.r_c2, params_.trs);
   //Now we just have to display debug_data_d_
   HANDLE_ERROR( cudaMemcpy(debug_data_, debug_data_d_, debug_img_size_*sizeof(float), cudaMemcpyDeviceToHost) );
   debug_img_ = cv::Mat(debug_img_width_*debug_img_ppm_, debug_img_height_*debug_img_ppm_, CV_32F, debug_data_);
@@ -272,6 +345,8 @@ inline void MPPICosts::freeCudaMem()
 {
   HANDLE_ERROR(cudaDestroyTextureObject(costmap_tex_));
   HANDLE_ERROR(cudaFreeArray(costmapArray_d_));
+  HANDLE_ERROR(cudaDestroyTextureObject(obstaclemap_tex_));
+  HANDLE_ERROR(cudaFreeArray(obstaclemapArray_d_));
   HANDLE_ERROR(cudaFree(params_d_));
   if (debugging_) {
     HANDLE_ERROR(cudaFree(debug_data_d_));
@@ -382,16 +457,45 @@ inline __device__ float MPPICosts::getTrackCost(float* s, int* crash)
   return track_cost;
 }
 
+inline __device__ float MPPICosts::getObstacleCost(float* s, int* crash)
+{
+  float obstacle_cost = 0;
+
+  //Compute a transformation to get the (x,y) positions of the front and back of the car.
+  float x_front = s[0] + FRONT_D*__cosf(s[2]);
+  float y_front = s[1] + FRONT_D*__sinf(s[2]);
+  float x_back = s[0] + BACK_D*__cosf(s[2]);
+  float y_back = s[1] + BACK_D*__sinf(s[2]);
+
+  float u,v,w; //Transformed coordinates
+
+  //Cost of front of the car
+  coorTransform(x_front, y_front, &u, &v, &w);
+  float obstacle_cost_front = tex2D<float>(obstaclemap_tex_, u/w, v/w);
+
+  //Cost for back of the car
+  coorTransform(x_back, y_back, &u, &v, &w);
+  float obstacle_cost_back = tex2D<float>(obstaclemap_tex_, u/w, v/w);
+
+  obstacle_cost = (fabs(obstacle_cost_front) + fabs(obstacle_cost_back) )/2.0;
+  obstacle_cost = params_d_->obstacle_coeff*obstacle_cost;
+  if (obstacle_cost_front >= params_d_->boundary_threshold || obstacle_cost_back >= params_d_->boundary_threshold) {
+    crash[0] = 1;
+  }
+  return obstacle_cost;
+}
+
 //Compute the immediate running cost.
 inline __device__ float MPPICosts::computeCost(float* s, float* u, float* du, 
                                         float* vars, int* crash, int timestep)
 {
   float control_cost = getControlCost(u, du, vars);
   float track_cost = getTrackCost(s, crash);
+  float obstacle_cost = getObstacleCost(s, crash);
   float speed_cost = getSpeedCost(s, crash);
   float crash_cost = (1.0 - params_.discount)*getCrashCost(s, crash, timestep);
-  float stabilizing_cost = getStabilizingCost(s);            
-  float cost = control_cost + speed_cost + crash_cost + track_cost + stabilizing_cost;
+  float stabilizing_cost = getStabilizingCost(s);
+  float cost = control_cost + speed_cost + crash_cost + track_cost + obstacle_cost + stabilizing_cost;
   if (cost > 1e9 || isnan(cost)) {
     cost = 1e9;
   }
