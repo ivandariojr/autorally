@@ -6,8 +6,8 @@
     type = "path_integral_nn" 
     name = "mppi_controller"
     output = "screen"
-    launch-prefix = "nvprof --print-gpu-trace --csv --log-file path_integral_prof.csv">
-    
+    launch-prefix = "nvprof --csv --log-file path_integral_prof.csv">
+
     <!--Pose topic configuration parameters -->
     <param name="pose_estimate" value="/pose_estimate" />
     <param name="path_topic" value="/mppi_controller/nominal_path" />
@@ -42,9 +42,10 @@
     <param name="min_steering" value="-0.99" />
 
     <!-- Cost Parameters -->
-    <param name="desired_speed" value="4.5" />
-    <param name="speed_coefficient" value="4.25" />
+    <param name="desired_speed" value="6" />
+    <param name="speed_coefficient" value="4.5" /> <!-- 4.25 -->
     <param name="track_coefficient" value="100.0" />
+    <param name="obstacle_coefficient" value="10000.0" />
     <param name="max_slip_angle" value="1.25" />
     <param name="slip_penalty" value="250.0" />
     <param name="track_slop" value="0.5" />
@@ -53,6 +54,7 @@
     <param name="throttle_coeff" value="0.0" />
     <param name="boundary_threshold" value="0.65" />
     <param name="discount" value = "0.1" />
+    <param name="obstacle_pad" value = "10" />
     <param name="map_path" value="$(find autorally_control)/src/path_integral/params/maps/gazebo/" />
   </node>
 

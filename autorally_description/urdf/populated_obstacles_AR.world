@@ -113,30 +113,6 @@
     </include>
     <include>
       <static>true</static>
-      <name>obstacle_1</name>
-      <uri>model://construction_barrel</uri>
-      <pose>2.4 -4.7 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>obstacle_2</name>
-      <uri>model://construction_barrel</uri>
-      <pose>4 -6.3 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>obstacle_3</name>
-      <uri>model://construction_cone</uri>
-      <pose>6.62 -1.4 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>obstacle_4</name>
-      <uri>model://construction_cone</uri>
-      <pose>10.15 0.37 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
       <name>cinder_block_1</name>
       <uri>model://cinder_block</uri>
       <pose>13.5 6.5 0 0 0 0</pose>
@@ -164,6 +140,49 @@
       <name>cinder_block_wide_3</name>
       <uri>model://cinder_block_wide</uri>
       <pose>13.35 5.4 0.28 0 0 0</pose>
+    </include>
+
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_1</name>
+      <uri>model://construction_cone</uri>
+      <pose>1.8 -6.3 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_2</name>
+      <uri>model://construction_cone</uri>
+      <pose>5.09 -4.72 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_3</name>
+      <uri>model://construction_cone</uri>
+      <pose>6.53 -1.65 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_1</name>
+      <uri>model://construction_cone</uri>
+      <pose>3.33 10.79 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_2</name>
+      <uri>model://construction_cone</uri>
+      <pose>-4.52 -5.32 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_3</name>
+      <uri>model://construction_cone</uri>
+      <pose>-6.41 1.05 0 0 0 0</pose>
+    </include>
+    <include>
+      <static>true</static>
+      <name>cone_obstacle_3</name>
+      <uri>model://construction_cone</uri>
+      <pose>-10.29 -2.26 0 0 0 0</pose>
     </include>
   </world>
 </sdf>
