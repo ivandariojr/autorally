@@ -59,6 +59,7 @@
 #include <gtsam/navigation/ImuBias.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/base/Matrix.h>
 
 using namespace gtsam;
 // Convenience for named keys

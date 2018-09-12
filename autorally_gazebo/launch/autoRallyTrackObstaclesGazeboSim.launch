@@ -54,6 +54,7 @@ limitations under the License.
 
   <param name="robot_description" command="$(find xacro)/xacro $(find autorally_description)/urdf/autoRallyPlatform.urdf.xacro prefix:=/"/>
 
+
   <node name="autoRally_state_publisher" pkg="robot_state_publisher"
         type="robot_state_publisher">
     <param name="publish_frequency" value="50.0"/>
@@ -85,6 +86,7 @@ limitations under the License.
     <arg name="InvertZ" value="false"/>
     <arg name="FixedInitialPose" value="true"/>
   </include>
+
   <include file="$(find autorally_core)/launch/autorally_core_manager.launch" />
-  <!-- include file="$(find autorally_control)/launch/joystickController.launch" /-->
+  <include file="$(find autorally_control)/launch/joystickController.launch" />
 </launch>

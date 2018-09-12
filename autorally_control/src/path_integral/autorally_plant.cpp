@@ -40,7 +40,9 @@ namespace autorally_control {
 AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int hz)
 {
   std::string pose_estimate_name;
+  std::string topic_prefix;
   mppi_node.getParam("pose_estimate", pose_estimate_name);
+  mppi_node.getParam("topic_prefix", topic_prefix);
   mppi_node.getParam("debug_mode", debug_mode_);
   //Initialize the publishers.
   control_pub_ = mppi_node.advertise<autorally_msgs::chassisCommand>("chassisCommand", 1);
@@ -52,7 +54,7 @@ AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int h
   delay_pub_ = mppi_node.advertise<geometry_msgs::Point>("mppiTimeDelay", 1);
   status_pub_ = mppi_node.advertise<autorally_msgs::pathIntegralStatus>("mppiStatus", 1);
   //Initialize the pose subscriber.
-  pose_sub_ = mppi_node.subscribe("/pose_estimate", 1, &AutorallyPlant::poseCall, this);
+  pose_sub_ = mppi_node.subscribe(pose_estimate_name, 1, &AutorallyPlant::poseCall, this);
   //Initialize the servo subscriber
   servo_sub_ = mppi_node.subscribe("chassisState", 1, &AutorallyPlant::servoCall, this);
   //Initialize the point cloud subscriber
@@ -143,7 +145,6 @@ void AutorallyPlant::pointsCall(sensor_msgs::PointCloud2Ptr points_msg)
 
   std::chrono::time_point<std::chrono::high_resolution_clock> t2 = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-  ROS_INFO("RETRIEVE POINT CLOUD: %ld",duration);
 }
 
 void AutorallyPlant::pubPath(float* nominal_traj, int num_timesteps, int hz)

@@ -137,35 +137,5 @@
       <pose>5.09 -4.72 0 0 0 0</pose>
     </include>
 
-    <!--<include>
-      <static>true</static>
-      <name>cone_obstacle_3</name>
-      <uri>model://construction_cone</uri>
-      <pose>6.53 -1.65 0 0 0 0</pose>
-    </include>-->
-    <include>
-      <static>true</static>
-      <name>cone_obstacle_4</name>
-      <uri>model://construction_cone</uri>
-      <pose>3.33 10.79 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>cone_obstacle_5</name>
-      <uri>model://construction_cone</uri>
-      <pose>-4.52 -5.32 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>cone_obstacle_6</name>
-      <uri>model://construction_cone</uri>
-      <pose>-6.41 1.05 0 0 0 0</pose>
-    </include>
-    <include>
-      <static>true</static>
-      <name>cone_obstacle_7</name>
-      <uri>model://construction_cone</uri>
-      <pose>-10.29 -2.26 0 0 0 0</pose>
-    </include>
   </world>
 </sdf>

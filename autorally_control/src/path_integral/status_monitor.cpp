@@ -38,7 +38,7 @@ namespace autorally_control {
 StatusMonitor::StatusMonitor(ros::NodeHandle nh)
 {
 	last_status_ = ros::Time::now();
-	status_sub_ = nh.subscribe("/mppi_controller/mppiStatus", 1, &StatusMonitor::statusCallback, this);
+	status_sub_ = nh.subscribe("mppi_controller/mppiStatus", 1, &StatusMonitor::statusCallback, this);
 	std::string info = "MPPI Controller";
 	std::string hardwareID = "none";
 	std::string portPath = "";
