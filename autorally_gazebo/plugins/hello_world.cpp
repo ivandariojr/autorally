@@ -9,7 +9,8 @@
 
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
-#include <gazebo/math/gzmath.hh>
+#include <gazebo/physics/physics.hh>
+#include <ignition/math.hh>
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
@@ -45,12 +46,13 @@ namespace gazebo
 
     void OnUpdate()
     {
-      math::Box bounding_box = this->model->GetBoundingBox();
-      math::Vector3 box_size = bounding_box.GetSize();
+
+      ignition::math::Box bounding_box = this->model->BoundingBox();
+      ignition::math::Vector3d box_size = bounding_box.Size();
 
       std_msgs::String msg;
       std::stringstream msg_stream;
-      msg_stream << "Box size ("<<box_size.x<<", "<<box_size.y<<", "<<box_size.z<<")";
+      msg_stream << "Box size ("<<box_size.X()<<", "<<box_size.Y()<<", "<<box_size.Z()<<")";
       msg.data = msg_stream.str();
       ROS_INFO("%s", msg.data.c_str());
 
