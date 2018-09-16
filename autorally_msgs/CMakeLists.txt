@@ -26,6 +26,7 @@ add_message_files(
   lapStats.msg
   pathIntegralStats.msg
   pathIntegralStatus.msg
+  spawnObstacles.msg
 )
 
 generate_messages(DEPENDENCIES
