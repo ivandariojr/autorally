@@ -178,7 +178,6 @@ public:
   /**
   * @brief Returns the current point cloud from the stereo camera
   */
-  //std::vector<pcl::PointXY> getPointCloud();
   sensor_msgs::PointCloud2Ptr getPointCloud();
 
   /**

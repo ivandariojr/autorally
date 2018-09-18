@@ -502,6 +502,7 @@ inline __device__ float MPPICosts::computeCost(float* s, float* u, float* du,
   return cost;
 }
 
+
 inline __device__ float MPPICosts::terminalCost(float* s)
 {
   return 0.0;

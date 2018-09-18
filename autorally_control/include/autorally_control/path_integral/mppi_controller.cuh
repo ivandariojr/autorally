@@ -106,7 +106,7 @@ public:
   * @brief Compute the control given the current state of the system.
   * @param state The current state of the autorally system.
   */
-  Eigen::MatrixXf computeControl(Eigen::Matrix<float, STATE_DIM, 1> state);
+  Eigen::MatrixXf computeControl(Eigen::Matrix<float, STATE_DIM, 1> state, int &crash);
 
 private:
   float gamma_; ///< Value of the temperature in the softmax.
