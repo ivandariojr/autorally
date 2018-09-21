@@ -12,4 +12,10 @@ target_link_libraries(hello_world ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 
 add_library(obstacles_factory SHARED obstacles_factory.cpp)
 target_link_libraries(obstacles_factory ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+if(gazebo_VERSION_MAJOR VERSION_EQUAL 9)
+  target_compile_definitions(obstacles_factory PRIVATE GAZEBO_9)
+  target_compile_definitions(hello_world PRIVATE GAZEBO_9)
+endif()
+
 add_dependencies(obstacles_factory autorally_msgs_gencpp)

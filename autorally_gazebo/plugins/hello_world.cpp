@@ -21,7 +21,7 @@ namespace gazebo
   class GetBoundingBox : public ModelPlugin
   {
   public:
-    void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
+    void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf) override
     {
       // make sure the ROS node for Gazebo has already been initialized
       if (!ros::isInitialized())
@@ -46,9 +46,14 @@ namespace gazebo
 
     void OnUpdate()
     {
-
+#ifdef GAZEBO_9
       ignition::math::Box bounding_box = this->model->BoundingBox();
       ignition::math::Vector3d box_size = bounding_box.Size();
+#else
+      gazebo::math::Box bounding_box = this->model->GetBoundingBox();
+      ignition::math::Vector3d box_size = bounding_box.GetSize().Ign();
+#endif
+
 
       std_msgs::String msg;
       std::stringstream msg_stream;

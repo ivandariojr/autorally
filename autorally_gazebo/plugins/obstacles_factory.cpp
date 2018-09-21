@@ -14,6 +14,8 @@
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <thread>
+#include <memory>
 #include <sstream>
 #include <ros/callback_queue.h>
 #include <std_msgs/Float64.h>
@@ -70,7 +72,7 @@ class ObstacleFactory : public WorldPlugin {
       return;
     }
     gzdbg << "[PLUGIN] spawn_obstacles loaded correctly" << std::endl;
-    rosNode = std::make_unique<ros::NodeHandle>("obstacle_factory");
+    rosNode = std::unique_ptr<ros::NodeHandle>(new ros::NodeHandle("obstacle_factory"));
     gzdbg << "[PLUGIN] rosnode created" << std::endl;
     ros::SubscribeOptions sub_options = ros::SubscribeOptions::create<autorally_msgs::spawnObstacles>(
       "/spawn_obstacles",
@@ -89,12 +91,14 @@ class ObstacleFactory : public WorldPlugin {
       prev_num_obstacles = num_spawn;
       return false;
     }
-    ignition::math::Matrix3d rot;
     ignition::math::Quaterniond q_rot;
-    rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
-    q_rot.Matrix(rot);
+    q_rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
     for (const auto &m_name: added_models) {
+#ifdef GAZEBO_9
       _parent->ModelByName(m_name)->SetWorldPose(sample_track().RotatePositionAboutOrigin(q_rot));
+#else
+      _parent->GetModel(m_name)->SetWorldPose(sample_track().RotatePositionAboutOrigin(q_rot));
+#endif
     }
     return true;
   }
@@ -125,7 +129,7 @@ class ObstacleFactory : public WorldPlugin {
       appended = false;
     }
     //Send remove commands and wait until actual number of models matches expected
-    auto expected = _parent->ModelCount() - added_models.size();
+    auto expected = WorldModelCount() - added_models.size();
     while (!added_models.empty()) {
       gzdbg << "[PLUGIN] Removing " << added_models.back() << std::endl;
       _parent->RemoveModel(added_models.back());
@@ -135,11 +139,9 @@ class ObstacleFactory : public WorldPlugin {
 
     if (!default_locations) {
       gzdbg << "[PLUGIN] Adding " << num_spawn << " new obstacles." << std::endl;
-      ignition::math::Matrix3d rot;
       ignition::math::Quaterniond q_rot;
-      rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
-      q_rot.Matrix(rot);
-      auto expected_model_count = _parent->ModelCount() + num_spawn;
+      q_rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
+      auto expected_model_count = WorldModelCount() + num_spawn;
       for (int p_i = 0; p_i < num_spawn; ++p_i) {
         std::string obs_name = obstacle_prefix + (appended_name) + std::to_string(p_i);
         gzdbg << "[PLUGIN] Adding " << obs_name << std::endl;
@@ -149,7 +151,7 @@ class ObstacleFactory : public WorldPlugin {
       }
       wait_for_change(static_cast<unsigned int>(expected_model_count));
     } else {
-      auto expected_model_count = _parent->ModelCount() + default_poses.size();
+      auto expected_model_count = WorldModelCount() + default_poses.size();
       gzdbg << "[PLUGIN] Spawning Default Obstacles." << std::endl;
       for (int p_i = 0; p_i < default_poses.size(); ++p_i) {
         std::string obs_name = obstacle_prefix + (appended_name) + std::to_string(p_i);
@@ -163,10 +165,18 @@ class ObstacleFactory : public WorldPlugin {
     remove_mutex.unlock();
   }
 
+  unsigned int WorldModelCount() const {
+#ifdef GAZEBO_9
+    return _parent->ModelCount();
+#else
+    return _parent->GetModelCount();
+#endif
+  }
+
   ///
   /// \param expected the expected number of elements int he world after waiting
   void wait_for_change(unsigned int expected) {
-    while (_parent->ModelCount() != expected) {
+    while (WorldModelCount() != expected) {
       gazebo::common::Time::MSleep(10);
     }
   }
