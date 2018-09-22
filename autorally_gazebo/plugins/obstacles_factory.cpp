@@ -20,21 +20,25 @@
 #include <ros/callback_queue.h>
 #include <std_msgs/Float64.h>
 #include <autorally_msgs/spawnObstacles.h>
+#include <autorally_msgs/obstacleStatus.h>
 
 namespace gazebo {
 class ObstacleFactory : public WorldPlugin {
 
-  const std::string obstacle_prefix = "cone_obstacle_";
+  const std::string obstacle_prefix = "obstacle_";
+  const std::string default_obstacle_type = "construction_cone";
   const std::vector<ignition::math::Pose3d> default_poses{
-  ignition::math::Pose3d(1.8, -6.3, 0, 0, 0, 0),
-  ignition::math::Pose3d(5.09, -4.72, 0, 0, 0, 0),
-//    ignition::math::Pose3d(6.53, -1.65, 0, 0, 0, 0),
-  ignition::math::Pose3d(3.33, 10.79, 0, 0, 0, 0),
-  ignition::math::Pose3d(-4.52, -5.32, 0, 0, 0, 0),
-  ignition::math::Pose3d(-6.41, 1.05, 0, 0, 0, 0),
-  ignition::math::Pose3d(-10.29, -2.26, 0, 0, 0, 0)
+    ignition::math::Pose3d(1.8, -6.3, 0, 0, 0, 0),
+    ignition::math::Pose3d(5.09, -4.72, 0, 0, 0, 0),
+    ignition::math::Pose3d(3.33, 10.79, 0, 0, 0, 0),
+    ignition::math::Pose3d(-4.52, -5.32, 0, 0, 0, 0),
+    ignition::math::Pose3d(-6.41, 1.05, 0, 0, 0, 0),
+    ignition::math::Pose3d(-10.29, -2.26, 0, 0, 0, 0)
   };
+
   ros::Subscriber rosSub;
+  ros::Publisher obstacle_name_pub_;
+
   ros::CallbackQueue rosQueue;
   std::thread rosQueueThread;
   std::unique_ptr<ros::NodeHandle> rosNode;
@@ -43,9 +47,10 @@ class ObstacleFactory : public WorldPlugin {
   std::mutex remove_mutex;
   bool appended = false;
   long int prev_num_obstacles = -1;
-public:
 
-  static const std::string make_obstacle_sdf(const ignition::math::Pose3d &pose, const std::string &name) {
+public:
+  static const std::string make_obstacle_sdf(const ignition::math::Pose3d &pose, const std::string &name,
+                                             const std::string &type) {
     std::ostringstream stream;
     stream << "<sdf version='1.6'>"
            << "<model name=\"" << name << "\" >"
@@ -53,17 +58,17 @@ public:
            << "<static>true</static>"
            << "<include>"
            << "<name>" << name << "</name>"
-           << "<uri>model://urdf/models/construction_cone</uri>"
+           << "<uri>model://urdf/models/" << type << "</uri>"
            << "</include>"
            << "</model>"
            << "</sdf>";
     return stream.str();
   }
+
   void Load(physics::WorldPtr _parent, sdf::ElementPtr /* _sdf*/) override {
     this->_parent = _parent;
     bool random = false;
     int num_spawn = 500; //large to verify the distribution is correct.
-//    ignition::math::Rand::Seed(0);
 
     // Make sure the ROS node for Gazebo has already been initialized
     if (!ros::isInitialized()) {
@@ -77,12 +82,13 @@ public:
     ros::SubscribeOptions sub_options = ros::SubscribeOptions::create<autorally_msgs::spawnObstacles>(
     "/spawn_obstacles",
     1,
-    boost::bind(&ObstacleFactory::spawn_obstacles, this, _1),
-    ros::VoidPtr(),
-    &this->rosQueue);
+    boost::bind(&ObstacleFactory::spawn_obstacles, this, _1), ros::VoidPtr(), &this->rosQueue);
     gzdbg << "[PLUGIN] subs opts created" << std::endl;
     rosSub = rosNode->subscribe(sub_options);
     gzdbg << "[PLUGIN] subscribed" << std::endl;
+
+    obstacle_name_pub_ = rosNode->advertise<autorally_msgs::obstacleStatus>("/obstacles_status", 1);
+
     rosQueueThread = std::thread{std::bind(&ObstacleFactory::queue_thread, this)};
   }
 
@@ -113,6 +119,7 @@ public:
 
     long int num_spawn = _msg->num_obstacles;
     bool default_locations = _msg->default_locations;
+    std::vector<std::string> obstacle_types = _msg->obstacle_types;
     // Move Existing Objects if the number spawned is the same from last time
     if (move_if_same_number(num_spawn, default_locations)) {
       gzdbg << "[PLUGIN] Only Moving Obstacle" << std::endl;
@@ -143,10 +150,10 @@ public:
       q_rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
       auto expected_model_count = WorldModelCount() + num_spawn;
       for (int p_i = 0; p_i < num_spawn; ++p_i) {
-        std::string obs_name = obstacle_prefix + (appended_name) + std::to_string(p_i);
-        gzdbg << "[PLUGIN] Adding " << obs_name << std::endl;
+        gzdbg << obstacle_types[p_i] << std::endl;
+        std::string obs_name = obstacle_prefix + obstacle_types[p_i] + "_" + (appended_name) + std::to_string(p_i);
         _parent->InsertModelString(ObstacleFactory::make_obstacle_sdf(
-        sample_track().RotatePositionAboutOrigin(q_rot), obs_name));
+          sample_track().RotatePositionAboutOrigin(q_rot), obs_name, obstacle_types[p_i]));
         added_models.push_back(obs_name);
       }
       wait_for_change(static_cast<unsigned int>(expected_model_count));
@@ -154,14 +161,21 @@ public:
       auto expected_model_count = WorldModelCount() + default_poses.size();
       gzdbg << "[PLUGIN] Spawning Default Obstacles." << std::endl;
       for (int p_i = 0; p_i < default_poses.size(); ++p_i) {
-        std::string obs_name = obstacle_prefix + (appended_name) + std::to_string(p_i);
+        std::string obs_name = obstacle_prefix + default_obstacle_type + "_" + (appended_name) + std::to_string(p_i);
         gzdbg << "[PLUGIN] Adding " << obs_name << std::endl;
-        _parent->InsertModelString(ObstacleFactory::make_obstacle_sdf(
-        default_poses[p_i], obs_name));
+        _parent->InsertModelString(ObstacleFactory::make_obstacle_sdf(default_poses[p_i], obs_name,
+                                                                      default_obstacle_type));
         added_models.push_back(obs_name);
       }
       wait_for_change(static_cast<unsigned int>(expected_model_count));
     }
+
+    autorally_msgs::obstacleStatus status_msg;
+    status_msg.header.stamp = ros::Time::now();
+    status_msg.num_obstacles = num_spawn;
+    status_msg.obstacle_names = added_models;
+    obstacle_name_pub_.publish(status_msg);
+
     remove_mutex.unlock();
   }
 
@@ -174,7 +188,7 @@ public:
   }
 
   ///
-  /// \param expected the expected number of elements int he world after waiting
+  /// \param expected the expected number of elements in the world after waiting
   void wait_for_change(unsigned int expected) {
     while (WorldModelCount() != expected) {
       gazebo::common::Time::MSleep(10);
