@@ -61,6 +61,7 @@ inline MPPICosts::MPPICosts(ros::NodeHandle mppi_node)
   std::string map_path;
   mppi_node.getParam("map_path", map_path);
   std::vector<float> track_costs = loadTrackData(map_path.c_str(), R, trs); //R and trs passed by reference
+  obstacle_costs_ = std::vector<float>(width_*height_, 0.);
   updateTransform(R, trs);
   updateParams(mppi_node);
   allocateTexMem();
@@ -121,6 +122,7 @@ inline void MPPICosts::updateParams_dcfg(autorally_control::PathIntegralParamsCo
   params_.track_slop = (float)config.track_slop;
   params_.steering_coeff = (float)config.steering_coeff;
   params_.throttle_coeff = (float)config.throttle_coeff;
+  params_.obstacle_decay = (float)config.obstacle_decay;
   params_.obstacle_pad = (int)config.obstacle_pad;
   paramsToDevice();
 }
@@ -129,7 +131,7 @@ inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
 {
   double desired_speed, speed_coeff, track_coeff, obstacle_coeff, max_slip_ang,
           slip_penalty, track_slop, crash_coeff, steering_coeff, throttle_coeff, 
-          boundary_threshold, discount;
+          boundary_threshold, discount, obstacle_decay;
   int obstacle_pad;
   int num_timesteps;
   //Read parameters from the ROS parameter server
@@ -147,6 +149,7 @@ inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
   mppi_node.getParam("boundary_threshold", boundary_threshold);
   mppi_node.getParam("discount", discount);
   mppi_node.getParam("obstacle_pad", obstacle_pad);
+  mppi_node.getParam("obstacle_decay", obstacle_decay);
 
   //Transfer to the cost params struct
   params_.desired_speed = (float)desired_speed;
@@ -161,6 +164,7 @@ inline void MPPICosts::updateParams(ros::NodeHandle mppi_node)
   params_.throttle_coeff = (float)throttle_coeff;
   params_.boundary_threshold = (float)boundary_threshold;
   params_.discount = (float)discount;
+  params_.obstacle_decay = (float)obstacle_decay;
   params_.num_timesteps = (int)num_timesteps;
   params_.obstacle_pad = obstacle_pad;
   //Move the updated parameters to gpu memory
@@ -192,7 +196,11 @@ inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
   int obstacle_pad_sq = pow(params_.obstacle_pad, 2);
   float inv_obstacle_pad = (float) 1/params_.obstacle_pad;
   float scale;
-  std::vector<float> obstacle_costs(width_*height_, 0.);
+  //std::vector<float> obstacle_costs_(width_*height_, 0.);
+
+  for (int idx=0; idx < width_*height_; idx++) {
+    obstacle_costs_[idx] *= params_.obstacle_decay;
+  }
 
   //Build obstacle map
   for (; points_iter_x != points_iter_x.end(); ++points_iter_x, ++points_iter_y) {
@@ -211,15 +219,15 @@ inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
       for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
         y_delta_sq = pow(y_idx-y,2);
         scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
-        if (obstacle_costs[y_idx * width_ + x_idx] < 1. * scale) {
-          obstacle_costs[y_idx * width_ + x_idx] = 1. * scale;
+        if (obstacle_costs_[y_idx * width_ + x_idx] < 1. * scale) {
+          obstacle_costs_[y_idx * width_ + x_idx] = 1. * scale;
         }
       }
     }
   }
 
   //Transfer from CPU to GPU
-  HANDLE_ERROR( cudaMemcpyToArray(obstaclemapArray_d_, 0, 0, obstacle_costs.data(), width_*height_*sizeof(float),
+  HANDLE_ERROR( cudaMemcpyToArray(obstaclemapArray_d_, 0, 0, obstacle_costs_.data(), width_*height_*sizeof(float),
                                   cudaMemcpyHostToDevice) );
 
   //Specify texture object parameters
