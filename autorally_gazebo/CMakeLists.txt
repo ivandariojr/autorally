@@ -4,6 +4,7 @@ project(autorally_gazebo)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   gazebo_ros
+  autorally_msgs
 )
 
 catkin_python_setup()
@@ -12,6 +13,7 @@ catkin_package(
   DEPENDS
     roscpp
     gazebo_ros
+    autorally_msgs
 )
 
 add_subdirectory(plugins)
