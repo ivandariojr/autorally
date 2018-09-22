@@ -124,7 +124,6 @@ limitations under the License.
     </inertial>
   </xacro:macro>
 
-
   <!-- Inertia of a thick-walled cylindrical tube with open ends. Height is
        measured along the z axis, which is the tube's axis. inner_rad and
        outer_rad are the tube's inner and outer radii, respectively. Pitch
@@ -360,6 +359,12 @@ limitations under the License.
   <gazebo reference="base_link">
     <material>Gazebo/Grey</material>
   </gazebo>
+
+  <!-- Velodyne LIDAR -->
+  <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
+  <VLP-16 parent="base_link" name="velodyne" topic="/velodyne_points" hz="10" samples="440">
+    <origin xyz="0 0 ${chassis_height/2 + 0.075}" rpy="0 0 0" />
+  </VLP-16>
 
   <!-- Chassis -->
   <link name="chassis">
