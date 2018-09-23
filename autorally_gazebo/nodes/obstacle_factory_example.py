@@ -14,7 +14,7 @@ def main():
   # while not rospy.is_shutdown():
   for i in range(2):
     print('sent message')
-    pub.publish(spawnObstacles(rospy.Header(), False, 3, 3, ['construction_cone']*3))
+    pub.publish(spawnObstacles(rospy.Header(), False, False, 3, 3, ['construction_cone']*3))
     rate.sleep()
 
   print("hello ros")

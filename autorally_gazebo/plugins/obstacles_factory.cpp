@@ -112,7 +112,7 @@ public:
   void spawn_obstacles(const autorally_msgs::spawnObstaclesConstPtr &_msg) {
     remove_mutex.lock();
     //Change Seed
-    if (ignition::math::Rand::Seed() != _msg->seed) {
+    if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
       gzdbg << "[PLUGIN] Changed Seed value from: " << ignition::math::Rand::Seed() << "to " << _msg->seed << std::endl;
       ignition::math::Rand::Seed(_msg->seed);
     }
