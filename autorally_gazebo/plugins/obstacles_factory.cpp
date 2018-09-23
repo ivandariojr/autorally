@@ -121,11 +121,12 @@ public:
     bool default_locations = _msg->default_locations;
     std::vector<std::string> obstacle_types = _msg->obstacle_types;
     // Move Existing Objects if the number spawned is the same from last time
+    /*
     if (move_if_same_number(num_spawn, default_locations)) {
       gzdbg << "[PLUGIN] Only Moving Obstacle" << std::endl;
       remove_mutex.unlock();
       return;
-    }
+    } */
     // To Avoid removing and adding the same object prepend 0 to the number
     // if we have added obstacles before.
     std::string appended_name;
