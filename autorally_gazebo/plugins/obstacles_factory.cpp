@@ -11,6 +11,7 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 #include <gazebo/gazebo.hh>
+#include <random>
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
@@ -47,6 +48,7 @@ class ObstacleFactory : public WorldPlugin {
   std::mutex remove_mutex;
   bool appended = false;
   long int prev_num_obstacles = -1;
+  std::default_random_engine generator_;
 
 public:
   static const std::string make_obstacle_sdf(const ignition::math::Pose3d &pose, const std::string &name,
@@ -112,9 +114,13 @@ public:
   void spawn_obstacles(const autorally_msgs::spawnObstaclesConstPtr &_msg) {
     remove_mutex.lock();
     //Change Seed
-    if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
-      gzdbg << "[PLUGIN] Changed Seed value from: " << ignition::math::Rand::Seed() << "to " << _msg->seed << std::endl;
-      ignition::math::Rand::Seed(_msg->seed);
+    //if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
+    if (_msg->reseed) {
+      generator_.seed(_msg->seed);
+      //ignition::math::Rand::Seed(_msg->seed);
+      //gzdbg << "[PLUGIN] Changed Seed value from: " << ignition::math::Rand::Seed() << " to " <<
+      //      ignition::math::Rand::Seed() << std::endl;
+      gzdbg << "[PLUGIN] Changed Seed value to " << _msg->seed << std::endl;
     }
 
     long int num_spawn = _msg->num_obstacles;
@@ -203,8 +209,10 @@ public:
     constexpr double max_r = 7.5;//= 7.75;
     constexpr double min_angle = M_PI;
     constexpr double max_angle = -M_PI;
-    double rolled_angle = ignition::math::Rand::DblUniform(min_angle, max_angle);
-    double rolled_r = ignition::math::Rand::DblUniform(min_r, max_r);
+    double rolled_angle = std::uniform_real_distribution<double>(min_angle, max_angle)(generator_);
+    //ignition::math::Rand::DblUniform(min_angle, max_angle);
+    double rolled_r = std::uniform_real_distribution<double>(min_r, max_r)(generator_);
+    //ignition::math::Rand::DblUniform(min_r, max_r);
     double x_offset = 6 * (rolled_angle < M_PI_2 && rolled_angle > -M_PI_2 ? 1 : -1);
     return ignition::math::Pose3d(
     rolled_r * cos(rolled_angle) + x_offset, //x
@@ -221,8 +229,10 @@ public:
     constexpr double min_x = -6;
     constexpr double max_x = 6;
 
-    double rolled_x = ignition::math::Rand::DblUniform(min_x, max_x);
-    double rolled_y = ignition::math::Rand::DblUniform(min_y, max_y);
+    double rolled_x = std::uniform_real_distribution<double>(min_x, max_x)(generator_);
+    //ignition::math::Rand::DblUniform(min_x, max_x);
+    double rolled_y = std::uniform_real_distribution<double>(min_y, max_y)(generator_);
+    //ignition::math::Rand::DblUniform(min_y, max_y);
     double y_offset = 4.7 * (rolled_y < 0 ? -1 : 1);
     return ignition::math::Pose3d(
     rolled_x,
@@ -236,7 +246,8 @@ public:
     constexpr double rounds_area = (7.8 * 7.8 - 4.45 * 4.45) * M_PI;
     constexpr double total_area = straight_area + rounds_area;
 
-    double area_roll = ignition::math::Rand::DblUniform(0, total_area);
+    double area_roll = std::uniform_real_distribution<double>(0, total_area)(generator_);
+    //ignition::math::Rand::DblUniform(0, total_area);
     //Sample coordinates in the round and straight sections with probability proportional to their area.
     if (area_roll <= rounds_area) {
       // adding rounds cone
