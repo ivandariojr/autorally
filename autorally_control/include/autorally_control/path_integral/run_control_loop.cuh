@@ -109,6 +109,11 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
+    if (robot.getResetObstacles())
+    {
+      controller.costs_->resetObstacleMap();
+    }
+
     u = controller.computeControl(state, crash); //Compute the control
     controller.model_->enforceConstraints(state, u);
     controller.model_->updateState(state, u); //Update the state using motion model.

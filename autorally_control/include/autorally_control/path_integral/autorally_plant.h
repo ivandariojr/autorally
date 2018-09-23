@@ -49,6 +49,7 @@
 #include <autorally_msgs/chassisState.h>
 #include <autorally_msgs/runstop.h>
 #include <autorally_msgs/pathIntegralStatus.h>
+#include <autorally_msgs/resetObstacles.h>
 
 #include <eigen3/Eigen/Dense>
 
@@ -121,6 +122,11 @@ public:
 	void poseCall(nav_msgs::Odometry pose_msg);
 
   /**
+  * @brief Callback for obstacle_reset subscriber.
+  */
+  void obsResetCall(autorally_msgs::resetObstacles obs_msg);
+
+  /**
   * @brief Callback for recording the current servo input.
   */
   void servoCall(autorally_msgs::chassisState servo_msg);
@@ -166,6 +172,11 @@ public:
   bool getRunstop();
 
   /**
+* @brief Returns the current value of obstacle reset.
+*/
+  bool getResetObstacles();
+
+  /**
   * @brief Returns the timestamp of the last pose callback.
   */
   ros::Time getLastPoseTime();
@@ -188,7 +199,6 @@ public:
   */
   int checkStatus();
 
-
   std::vector<float> getModelParams();
 
 private:
@@ -204,6 +214,7 @@ private:
   bool safe_speed_zero_; ///< Current value of safe speed.
   bool debug_mode_; ///< Whether or not the system is in debug/simulation mode.
   bool activated_; ///< Whether or not we've received an initial pose message.
+  bool reset_obstacles_; ///< Whether or not we should reset the obstacles cost.
 
   ros::Time last_check_; //Timestamp of the last published control.
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
@@ -216,6 +227,7 @@ private:
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
   ros::Subscriber points_sub_; ///< Subscriber to /stereo/filtered_points2.
+  ros::Subscriber obs_reset_sub_; ///< Subscriber to obstacle_reset.
 
   sensor_msgs::PointCloud2Ptr points_;
   //pcl::PointCloud<pcl::PointXYZ> points_;

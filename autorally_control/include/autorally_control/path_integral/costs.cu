@@ -185,6 +185,13 @@ inline void MPPICosts::updateTransform(Eigen::MatrixXf m, Eigen::ArrayXf trs){
   paramsToDevice();
 }
 
+inline void MPPICosts::resetObstacleMap()
+{
+  for (int idx=0; idx < width_*height_; idx++) {
+    obstacle_costs_[idx] = 0.0;
+  }
+}
+
 inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
 {
   sensor_msgs::PointCloud2Iterator<float> points_iter_x(*points, "x");

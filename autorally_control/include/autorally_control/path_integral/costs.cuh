@@ -146,6 +146,11 @@ public:
   void updateObstacleMap(sensor_msgs::PointCloud2Ptr points);
 
   /*
+  * @brief Resets the obstacle costmap in case the decay is slow
+  */
+  void resetObstacleMap();
+
+  /*
   * @brief Loads track data from a file.
   * @param C-string representing the path to the costmap data file.
   * @param h Matrix representing a transform from world to (offset) costmap coordinates.
