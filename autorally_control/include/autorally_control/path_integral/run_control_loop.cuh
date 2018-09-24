@@ -70,6 +70,7 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   int num_iter = 0;
   ros::Time last_pose_update = robot.getLastPoseTime();
   ros::Time last_pc_update = robot.getLastPointCloudTime();
+  ros::Time last_obs_update = robot.getLastObstacleResetTime();
 
   ros::Publisher path_pub; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Publisher ips_pub; ///< Publisher of nav_mags::Path on topic importance sampler.
@@ -109,9 +110,10 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
-    if (robot.getResetObstacles())
+    if (robot.getResetObstacles() && last_obs_update != robot.getLastObstacleResetTime())
     {
       controller.costs_->resetObstacleMap();
+      last_obs_update = robot.getLastObstacleResetTime();
     }
 
     u = controller.computeControl(state, crash); //Compute the control

@@ -125,6 +125,7 @@ void AutorallyPlant::poseCall(nav_msgs::Odometry pose_msg)
 void AutorallyPlant::obsResetCall(autorally_msgs::resetObstacles obs_msg)
 {
   reset_obstacles_ = obs_msg.reset;
+  last_obs_reset_call_ = ros::Time::now();
 }
 
 void AutorallyPlant::servoCall(autorally_msgs::chassisState servo_msg)
@@ -263,6 +264,11 @@ ros::Time AutorallyPlant::getLastPoseTime()
 ros::Time AutorallyPlant::getLastPointCloudTime()
 {
   return last_pc_call_;
+}
+
+ros::Time AutorallyPlant::getLastObstacleResetTime()
+{
+  return last_obs_reset_call_;
 }
 
 sensor_msgs::PointCloud2Ptr AutorallyPlant::getPointCloud()

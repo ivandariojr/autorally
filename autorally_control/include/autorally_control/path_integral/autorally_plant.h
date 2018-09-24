@@ -186,6 +186,8 @@ public:
   */
   ros::Time getLastPointCloudTime();
 
+  ros::Time getLastObstacleResetTime();
+
   /**
   * @brief Returns the current point cloud from the stereo camera
   */
@@ -219,6 +221,7 @@ private:
   ros::Time last_check_; //Timestamp of the last published control.
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
   ros::Time last_pc_call_; ///< Timestamp of the last point cloud callback.
+  ros::Time last_obs_reset_call_;
 
   ros::Publisher control_pub_; ///< Publisher of autorally_msgs::chassisCommand type on topic servoCommand.
   ros::Publisher status_pub_; ///< Publishes the status (0 good, 1 neutral, 2 bad) of the controller
