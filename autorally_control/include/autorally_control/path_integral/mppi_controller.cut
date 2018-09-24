@@ -46,7 +46,7 @@
 
 template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
 __global__ void rolloutKernel(int num_timesteps, float* state_d, float* U_d, float* du_d, float* nu_d, 
-                               float* costs_d, DYNAMICS_T* dynamics_model, COSTS_T* mppi_costs, 
+                               float* costs_d, DYNAMICS_T* dynamics_model, COSTS_T* mppi_costs,
                                float* nominal_traj_d)
 {
   int i,j;
@@ -214,7 +214,7 @@ __global__ void weightedReductionKernel(float* states_d, float* du_d, float* nu_
 
 template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
 void launchRolloutKernel(int num_timesteps, float* state_d, float* U_d, float* du_d, float* nu_d, 
-                         float* costs_d, DYNAMICS_T *dynamics_model, COSTS_T *mppi_costs, 
+                         float* costs_d, DYNAMICS_T *dynamics_model, COSTS_T *mppi_costs,
                          float* nominal_traj_d)
 {
   const int GRIDSIZE_X = (NUM_ROLLOUTS-1)/BLOCKSIZE_X + 1;
@@ -398,9 +398,10 @@ void MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeNomin
 }
 
 template<class DYNAMICS_T, class COSTS_T, int ROLLOUTS, int BDIM_X, int BDIM_Y>
-Eigen::MatrixXf MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeControl(Eigen::Matrix<float, STATE_DIM, 1> state)
+Eigen::MatrixXf MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::computeControl(Eigen::Matrix<float, STATE_DIM, 1> state, int &crash)
 {
   int i,j,opt_iter;
+  float baseline;
   clock_t startTime = clock();
   //Compute the importance sampling trajectory
   computeNominalTraj(state, importance_sampler_);
@@ -411,13 +412,13 @@ Eigen::MatrixXf MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::c
     //Generate a bunch of random numbers
     curandGenerateNormal(gen_, du_d_, NUM_ROLLOUTS*num_timesteps_*CONTROL_DIM, 0.0, 1.0);
     //Launch the rollout kernel
-    launchRolloutKernel<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>(num_timesteps_, state_d_, U_d_, du_d_, nu_d_, traj_costs_d_, model_, 
+    launchRolloutKernel<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>(num_timesteps_, state_d_, U_d_, du_d_, nu_d_, traj_costs_d_, model_,
                         costs_, nominal_traj_d_);
     //Check for any errors from the rollout kernel.
     CudaCheckError();
     HANDLE_ERROR( cudaDeviceSynchronize() );
     HANDLE_ERROR(cudaMemcpy(traj_costs_, traj_costs_d_, NUM_ROLLOUTS*sizeof(float), cudaMemcpyDeviceToHost));
-    float baseline = traj_costs_[0];
+    baseline = traj_costs_[0];
     for (i = 0; i < NUM_ROLLOUTS; i++) {
       if (traj_costs_[i] < baseline){
         baseline = traj_costs_[i];
@@ -447,6 +448,13 @@ Eigen::MatrixXf MPPIController<DYNAMICS_T, COSTS_T, ROLLOUTS, BDIM_X, BDIM_Y>::c
   }
   //Compute the planned trajectory
   computeNominalTraj(state, nominal_traj_);
+
+  //Check for collision
+  if (baseline >= costs_->params_.crash_coeff)
+    crash = 1;
+  else
+    crash = 0;
+
   //Slide the control sequence down
   for (i = 0; i < num_timesteps_- 1; i++) {
     for (j = 0; j < CONTROL_DIM; j++) {

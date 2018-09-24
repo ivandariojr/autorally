@@ -18,6 +18,7 @@
             </ode>
           </friction>
         </surface>
+        <laser_retro>0.0</laser_retro>
       </collision>
       <visual name="visual">
         <cast_shadows>false</cast_shadows>

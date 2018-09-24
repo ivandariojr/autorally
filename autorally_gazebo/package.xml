@@ -49,4 +49,5 @@
   <run_depend>effort_controllers</run_depend>
   <run_depend>joint_state_controller</run_depend>
   <run_depend>roscpp</run_depend>
+  <run_depend>autorally_msgs</run_depend>
 </package>

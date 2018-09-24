@@ -83,6 +83,7 @@ public:
     float throttle_coeff;
     float boundary_threshold;
     float discount;
+    float obstacle_decay;
     int num_timesteps;
     int grid_res;
     int obstacle_pad;
@@ -143,6 +144,11 @@ public:
   * @param points
   */
   void updateObstacleMap(sensor_msgs::PointCloud2Ptr points);
+
+  /*
+  * @brief Resets the obstacle costmap in case the decay is slow
+  */
+  void resetObstacleMap();
 
   /*
   * @brief Loads track data from a file.
@@ -261,6 +267,7 @@ protected:
   cudaChannelFormatDesc channelDesc_; ///< Cuda texture channel description.
   cudaTextureObject_t costmap_tex_; ///< Cuda texture object.
   cudaTextureObject_t obstaclemap_tex_; ///< Cuda texture object.
+  std::vector<float> obstacle_costs_;
   struct cudaTextureDesc texDesc_;
 
   //Debugging variables

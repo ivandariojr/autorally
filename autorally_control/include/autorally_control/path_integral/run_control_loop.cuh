@@ -61,6 +61,8 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   //std::vector<pcl::PointXY> points;
   sensor_msgs::PointCloud2Ptr points;
 
+  autorally_msgs::pathIntegralStatus crash_msg;
+
   //Set the loop rate
   ros::Rate loop_rate(params.hz);
 
@@ -68,12 +70,17 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   int num_iter = 0;
   ros::Time last_pose_update = robot.getLastPoseTime();
   ros::Time last_pc_update = robot.getLastPointCloudTime();
+  ros::Time last_obs_update = robot.getLastObstacleResetTime();
 
   ros::Publisher path_pub; ///< Publisher of nav_mags::Path on topic nominalPath.
   ros::Publisher ips_pub; ///< Publisher of nav_mags::Path on topic importance sampler.
+  ros::Publisher crash_pub; ///< Publisher of autorally_msgs:pathIntegralStats on topic crashStatus.
 
   path_pub = mppi_node.advertise<nav_msgs::Path>("nominal_path_debug", 1);
   ips_pub = mppi_node.advertise<nav_msgs::Path>("importance_sampler", 1);
+  crash_pub = mppi_node.advertise<autorally_msgs::pathIntegralStatus>("crashStatus", 1);
+
+  int crash = 0;
 
   //ros::AsyncSpinner spinner(8); ///< TODO: Make thread count a parameter
   //spinner.start();
@@ -103,13 +110,23 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
-    u = controller.computeControl(state); //Compute the control
+    if (robot.getResetObstacles() && last_obs_update != robot.getLastObstacleResetTime())
+    {
+      controller.costs_->resetObstacleMap();
+      last_obs_update = robot.getLastObstacleResetTime();
+    }
+
+    u = controller.computeControl(state, crash); //Compute the control
     controller.model_->enforceConstraints(state, u);
     controller.model_->updateState(state, u); //Update the state using motion model.
     
     robot.pubControl(u(0), u(1)); //Publish steering u(0) and throttle u(1)
     robot.pubPath(controller.nominal_traj_, path_pub, controller.num_timesteps_, params.hz); //Publish the planned path.
     robot.pubPath(controller.importance_sampler_, ips_pub, controller.num_timesteps_, params.hz); //Publish the planned path.
+
+    crash_msg.status = crash;
+    crash_msg.header.stamp = ros::Time::now();
+    crash_pub.publish(crash_msg);
 
     //Check system status: 0 -> good, 1-> not active, 2-> bad
     if (!params.debug_mode){ //In simulation/debug mode everything is always ok.

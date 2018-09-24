@@ -59,6 +59,8 @@ AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int h
   servo_sub_ = mppi_node.subscribe("chassisState", 1, &AutorallyPlant::servoCall, this);
   //Initialize the point cloud subscriber
   points_sub_ = mppi_node.subscribe("/stereo/filtered_points2", 1, &AutorallyPlant::pointsCall, this);
+  //Initialize the obstacle cost reset subscripter
+  obs_reset_sub_ = mppi_node.subscribe("obstacle_reset", 1, &AutorallyPlant::obsResetCall, this);
   //Initialize auxiliary variables.
   safe_speed_zero_ = false;
   debug_mode_ = debug_mode;
@@ -118,6 +120,12 @@ void AutorallyPlant::poseCall(nav_msgs::Odometry pose_msg)
   //Update the minus yaw derivative.
   full_state_.yaw_mder = -pose_msg.twist.twist.angular.z;//.5*full_state_.yaw_mder + .5*(-1.0/cos(full_state_.pitch)*(sin(full_state_.roll)*pose_msg.twist.twist.angular.y
   						            //  + cos(full_state_.roll)*pose_msg.twist.twist.angular.z));
+}
+
+void AutorallyPlant::obsResetCall(autorally_msgs::resetObstacles obs_msg)
+{
+  reset_obstacles_ = obs_msg.reset;
+  last_obs_reset_call_ = ros::Time::now();
 }
 
 void AutorallyPlant::servoCall(autorally_msgs::chassisState servo_msg)
@@ -243,6 +251,11 @@ bool AutorallyPlant::getRunstop()
   return safe_speed_zero_;
 }
 
+bool AutorallyPlant::getResetObstacles()
+{
+  return reset_obstacles_;
+}
+
 ros::Time AutorallyPlant::getLastPoseTime()
 {
   return last_pose_call_;
@@ -251,6 +264,11 @@ ros::Time AutorallyPlant::getLastPoseTime()
 ros::Time AutorallyPlant::getLastPointCloudTime()
 {
   return last_pc_call_;
+}
+
+ros::Time AutorallyPlant::getLastObstacleResetTime()
+{
+  return last_obs_reset_call_;
 }
 
 sensor_msgs::PointCloud2Ptr AutorallyPlant::getPointCloud()
