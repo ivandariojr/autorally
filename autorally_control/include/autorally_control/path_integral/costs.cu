@@ -273,7 +273,7 @@ inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
   int x, y, x_pt, y_pt;
   int x_range_min, x_range_max, y_range_min, y_range_max;
   int x_delta_sq, y_delta, y_delta_sq;
-  int obstacle_pad_sq = pow(8., 2);
+  int obstacle_pad_sq = pow(5., 2);
   float inv_obstacle_pad = (float) 1./obstacle_pad_sq;
   float scale;
   //std::vector<float> obstacle_costs_(width_*height_, 0.);
@@ -306,6 +306,7 @@ inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
     }
   }
 
+    /*
   for (int i=0; i<width_*height_; i++)
   {
     if (map_track_costs_[i] < 10.)
@@ -317,7 +318,7 @@ inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
         track_costs_[i] = 0.5;
       }
     }
-  }
+  }*/
 
   //Transfer from CPU to GPU
   HANDLE_ERROR( cudaMemcpyToArray(costmapArray_d_, 0, 0, track_costs_.data(), width_*height_*sizeof(float),
