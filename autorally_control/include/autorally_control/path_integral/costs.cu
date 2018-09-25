@@ -233,8 +233,8 @@ inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
       for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
         y_delta_sq = pow(y_idx-y,2);
         scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
-        if (obstacle_costs_[y_idx * width_ + x_idx] < 1. * scale) {
-          obstacle_costs_[y_idx * width_ + x_idx] = 1. * scale;
+        if (obstacle_costs_[y_idx * width_ + x_idx] < 1.*scale) {
+          obstacle_costs_[y_idx * width_ + x_idx] = 1.*scale;
         }
       }
     }
