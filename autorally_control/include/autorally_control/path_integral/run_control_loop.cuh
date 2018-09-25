@@ -107,12 +107,13 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
+    /*
     if (last_track_pc_update != robot.getLastTrackPointCloudTime()){
       last_pc_update = robot.getLastTrackPointCloudTime();
       points = robot.getTrackPointCloud();
       controller.costs_->updateTrackMap(points);
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
-    }
+    }*/
 
     if (robot.getResetObstacles() && last_obs_update != robot.getLastObstacleResetTime())
     {
