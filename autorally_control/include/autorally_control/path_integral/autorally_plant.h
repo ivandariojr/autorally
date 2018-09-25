@@ -135,6 +135,7 @@ public:
   * @brief Callback for point cloud.
   */
   void pointsCall(sensor_msgs::PointCloud2Ptr points_msg);
+  void trackPointsCall(sensor_msgs::PointCloud2Ptr points_msg);
 
   /**
   * @brief Callback for safe speed subscriber.
@@ -185,6 +186,7 @@ public:
   * @brief Returns the timestamp of the last point cloud callback.
   */
   ros::Time getLastPointCloudTime();
+  ros::Time getLastTrackPointCloudTime();
 
   ros::Time getLastObstacleResetTime();
 
@@ -192,6 +194,7 @@ public:
   * @brief Returns the current point cloud from the stereo camera
   */
   sensor_msgs::PointCloud2Ptr getPointCloud();
+  sensor_msgs::PointCloud2Ptr getTrackPointCloud();
 
   /**
   * @brief Checks the system status.
@@ -221,6 +224,7 @@ private:
   ros::Time last_check_; //Timestamp of the last published control.
   ros::Time last_pose_call_; ///< Timestamp of the last pose callback.
   ros::Time last_pc_call_; ///< Timestamp of the last point cloud callback.
+  ros::Time last_track_pc_call_; ///< Timestamp of the last point cloud callback.
   ros::Time last_obs_reset_call_;
 
   ros::Publisher control_pub_; ///< Publisher of autorally_msgs::chassisCommand type on topic servoCommand.
@@ -230,9 +234,11 @@ private:
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
   ros::Subscriber points_sub_; ///< Subscriber to /stereo/filtered_points2.
+  ros::Subscriber track_points_sub_; ///< Subscriber to /stereo/track_points2.
   ros::Subscriber obs_reset_sub_; ///< Subscriber to obstacle_reset.
 
   sensor_msgs::PointCloud2Ptr points_;
+  sensor_msgs::PointCloud2Ptr track_points_;
   //pcl::PointCloud<pcl::PointXYZ> points_;
   //std::vector<pcl::PointXY> points_; ///< 2D points extracted from point cloud
 

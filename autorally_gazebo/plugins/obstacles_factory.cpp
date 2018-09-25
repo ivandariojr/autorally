@@ -112,7 +112,7 @@ public:
   }
 
   void spawn_obstacles(const autorally_msgs::spawnObstaclesConstPtr &_msg) {
-    remove_mutex.lock();
+    //remove_mutex.lock();
     //Change Seed
     //if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
     if (_msg->reseed) {
@@ -183,7 +183,7 @@ public:
     status_msg.obstacle_names = added_models;
     obstacle_name_pub_.publish(status_msg);
 
-    remove_mutex.unlock();
+    //remove_mutex.unlock();
   }
 
   unsigned int WorldModelCount() const {

@@ -144,6 +144,7 @@ public:
   * @param points
   */
   void updateObstacleMap(sensor_msgs::PointCloud2Ptr points);
+  void updateTrackMap(sensor_msgs::PointCloud2Ptr points);
 
   /*
   * @brief Resets the obstacle costmap in case the decay is slow
@@ -268,6 +269,8 @@ protected:
   cudaTextureObject_t costmap_tex_; ///< Cuda texture object.
   cudaTextureObject_t obstaclemap_tex_; ///< Cuda texture object.
   std::vector<float> obstacle_costs_;
+  std::vector<float> track_costs_;
+  std::vector<float> map_track_costs_;
   struct cudaTextureDesc texDesc_;
 
   //Debugging variables

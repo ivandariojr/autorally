@@ -70,6 +70,7 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
   int num_iter = 0;
   ros::Time last_pose_update = robot.getLastPoseTime();
   ros::Time last_pc_update = robot.getLastPointCloudTime();
+  ros::Time last_track_pc_update = robot.getLastTrackPointCloudTime();
   ros::Time last_obs_update = robot.getLastObstacleResetTime();
 
   ros::Publisher path_pub; ///< Publisher of nav_mags::Path on topic nominalPath.
@@ -102,11 +103,14 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
     if (last_pc_update != robot.getLastPointCloudTime()){
       last_pc_update = robot.getLastPointCloudTime();
       points = robot.getPointCloud();
-
-      std::chrono::time_point<std::chrono::high_resolution_clock> t1 = std::chrono::high_resolution_clock::now();
       controller.costs_->updateObstacleMap(points);
-      std::chrono::time_point<std::chrono::high_resolution_clock> t2 = std::chrono::high_resolution_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+      //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
+    }
+
+    if (last_track_pc_update != robot.getLastTrackPointCloudTime()){
+      last_pc_update = robot.getLastTrackPointCloudTime();
+      points = robot.getTrackPointCloud();
+      controller.costs_->updateTrackMap(points);
       //ROS_INFO("CREATE OBSTACLE MAP: %ld",duration);
     }
 
