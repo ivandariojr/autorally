@@ -59,6 +59,7 @@ AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int h
   servo_sub_ = mppi_node.subscribe("chassisState", 1, &AutorallyPlant::servoCall, this);
   //Initialize the point cloud subscriber
   points_sub_ = mppi_node.subscribe("/stereo/filtered_points2", 1, &AutorallyPlant::pointsCall, this);
+  track_points_sub_ = mppi_node.subscribe("/stereo/track_points2", 1, &AutorallyPlant::trackPointsCall, this);
   //Initialize the obstacle cost reset subscripter
   obs_reset_sub_ = mppi_node.subscribe("obstacle_reset", 1, &AutorallyPlant::obsResetCall, this);
   //Initialize auxiliary variables.
@@ -153,6 +154,15 @@ void AutorallyPlant::pointsCall(sensor_msgs::PointCloud2Ptr points_msg)
 
   std::chrono::time_point<std::chrono::high_resolution_clock> t2 = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+}
+
+void AutorallyPlant::trackPointsCall(sensor_msgs::PointCloud2Ptr points_msg)
+{
+  //Update the timestamp
+  last_track_pc_call_ = ros::Time::now();
+
+  //Copy pointer to point cloud
+  track_points_ = points_msg;
 }
 
 void AutorallyPlant::pubPath(float* nominal_traj, int num_timesteps, int hz)
@@ -266,6 +276,11 @@ ros::Time AutorallyPlant::getLastPointCloudTime()
   return last_pc_call_;
 }
 
+ros::Time AutorallyPlant::getLastTrackPointCloudTime()
+{
+  return last_track_pc_call_;
+}
+
 ros::Time AutorallyPlant::getLastObstacleResetTime()
 {
   return last_obs_reset_call_;
@@ -274,6 +289,11 @@ ros::Time AutorallyPlant::getLastObstacleResetTime()
 sensor_msgs::PointCloud2Ptr AutorallyPlant::getPointCloud()
 {
   return points_;
+}
+
+sensor_msgs::PointCloud2Ptr AutorallyPlant::getTrackPointCloud()
+{
+  return track_points_;
 }
 
 int AutorallyPlant::checkStatus()

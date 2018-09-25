@@ -62,6 +62,13 @@ inline MPPICosts::MPPICosts(ros::NodeHandle mppi_node)
   mppi_node.getParam("map_path", map_path);
   std::vector<float> track_costs = loadTrackData(map_path.c_str(), R, trs); //R and trs passed by reference
   obstacle_costs_ = std::vector<float>(width_*height_, 0.);
+  track_costs_ = std::vector<float>(width_*height_, 0.);
+
+  map_track_costs_ = std::vector<float>(width_*height_, 0.);
+  for (int i = 0; i < width_*height_; i++) {
+    map_track_costs_[i] = track_costs[i];
+  }
+
   updateTransform(R, trs);
   updateParams(mppi_node);
   allocateTexMem();
@@ -257,6 +264,85 @@ inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
 
   //Now create the new texture object.
   HANDLE_ERROR(cudaCreateTextureObject(&obstaclemap_tex_, &resDesc, &texDesc, NULL) );
+}
+
+inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
+{
+  sensor_msgs::PointCloud2Iterator<float> points_iter_x(*points, "x");
+  sensor_msgs::PointCloud2Iterator<float> points_iter_y(*points, "y");
+  int x, y, x_pt, y_pt;
+  int x_range_min, x_range_max, y_range_min, y_range_max;
+  int x_delta_sq, y_delta, y_delta_sq;
+  int obstacle_pad_sq = pow(8., 2);
+  float inv_obstacle_pad = (float) 1./obstacle_pad_sq;
+  float scale;
+  //std::vector<float> obstacle_costs_(width_*height_, 0.);
+
+  for (int idx=0; idx < width_*height_; idx++) {
+    track_costs_[idx] *= params_.obstacle_decay;
+  }
+
+  //Build obstacle map
+  for (; points_iter_x != points_iter_x.end(); ++points_iter_x, ++points_iter_y) {
+    x = int(round(*points_iter_x * resolution_ - x_min_));
+    y = int(round(*points_iter_y * resolution_ - y_min_));
+
+    x_range_min = min(max(x-params_.obstacle_pad, 0), width_-1);
+    x_range_max = min(max(x+params_.obstacle_pad, 0), width_-1);
+
+    for (int x_idx = x_range_min; x_idx <= x_range_max; x_idx++) {
+      x_delta_sq = pow(x_idx-x,2);
+      y_delta = int(round(sqrt(-x_delta_sq + obstacle_pad_sq)));
+      y_range_min = min(max(y-y_delta, 0), height_-1);
+      y_range_max = min(max(y+y_delta, 0), height_-1);
+
+      for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
+        y_delta_sq = pow(y_idx-y,2);
+        scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
+        if (track_costs_[y_idx * width_ + x_idx] < 1.*scale) {
+          track_costs_[y_idx * width_ + x_idx] = 1.*scale;
+        }
+      }
+    }
+  }
+
+  for (int i=0; i<width_*height_; i++)
+  {
+    if (map_track_costs_[i] < 10.)
+    {
+      if (map_track_costs_[i] < 0.5 && map_track_costs_[i] > track_costs_[i])
+      {
+        track_costs_[i] = map_track_costs_[i];
+      } else if (map_track_costs_[i] >= 0.5 && track_costs_[i] < 0.5) {
+        track_costs_[i] = 0.5;
+      }
+    }
+  }
+
+  //Transfer from CPU to GPU
+  HANDLE_ERROR( cudaMemcpyToArray(costmapArray_d_, 0, 0, track_costs_.data(), width_*height_*sizeof(float),
+                                  cudaMemcpyHostToDevice) );
+
+  //Specify texture object parameters
+  struct cudaTextureDesc texDesc;
+  memset(&texDesc, 0, sizeof(texDesc));
+  texDesc.addressMode[0] = cudaAddressModeClamp;
+  texDesc.addressMode[1] = cudaAddressModeClamp;
+  texDesc.filterMode = cudaFilterModeLinear;
+  texDesc.readMode = cudaReadModeElementType;
+  texDesc.normalizedCoords = 1;
+
+  //Specify texture
+  struct cudaResourceDesc resDesc;
+  memset(&resDesc, 0, sizeof(resDesc));
+  resDesc.resType = cudaResourceTypeArray;
+  resDesc.res.array.array = costmapArray_d_;
+
+  //First destroy the current texture object
+  HANDLE_ERROR(cudaDestroyTextureObject(costmap_tex_));
+
+  //Now create the new texture object.
+  HANDLE_ERROR(cudaCreateTextureObject(&costmap_tex_, &resDesc, &texDesc, NULL) );
 }
 
 inline std::vector<float> MPPICosts::loadTrackData(const char* costmap_path, Eigen::Matrix3f &R, Eigen::Array3f &trs)
