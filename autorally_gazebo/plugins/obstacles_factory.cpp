@@ -37,6 +37,11 @@ class ObstacleFactory : public WorldPlugin {
     ignition::math::Pose3d(-10.29, -2.26, 0, 0, 0, 0)
   };
 
+  struct ObstacleModel{
+    std::string name;
+    ignition::math::Pose3d pose;
+  };
+
   ros::Subscriber rosSub;
   ros::Publisher obstacle_name_pub_;
 
@@ -44,7 +49,7 @@ class ObstacleFactory : public WorldPlugin {
   std::thread rosQueueThread;
   std::unique_ptr<ros::NodeHandle> rosNode;
   physics::WorldPtr _parent;
-  std::vector<std::string> added_models;
+  std::vector<ObstacleModel> added_models;
   std::mutex remove_mutex;
   bool appended = false;
   long int prev_num_obstacles = -1;
@@ -101,18 +106,25 @@ public:
     }
     ignition::math::Quaterniond q_rot;
     q_rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
-    for (const auto &m_name: added_models) {
+    for (auto &m_name: added_models) {
+      m_name.pose = safe_obstacle_sample(q_rot);
+      gzdbg << "[MOVING] obstacle " << m_name.name
+      << " to poisiton " << m_name.pose << std::endl;
 #ifdef GAZEBO_9
-      _parent->ModelByName(m_name)->SetWorldPose(sample_track().RotatePositionAboutOrigin(q_rot));
+      _parent->ModelByName(m_name.name)->SetWorldPose(m_name.pose);
 #else
-      _parent->GetModel(m_name)->SetWorldPose(sample_track().RotatePositionAboutOrigin(q_rot));
+      _parent->GetModel(m_name.name)->SetWorldPose(m_name.pose);
 #endif
+//      gazebo::common::Time::MSleep(100);
+      gzdbg << "[MOVING] Sucessful" << std::endl;
     }
     return true;
   }
 
   void spawn_obstacles(const autorally_msgs::spawnObstaclesConstPtr &_msg) {
-    //remove_mutex.lock();
+    _parent->SetPaused(true);
+    _parent->SetPhysicsEnabled(false);
+
     //Change Seed
     //if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
     if (_msg->reseed) {
@@ -123,16 +135,15 @@ public:
       gzdbg << "[PLUGIN] Changed Seed value to " << _msg->seed << std::endl;
     }
 
-    long int num_spawn = _msg->num_obstacles;
+    auto num_spawn = static_cast<long unsigned int>(_msg->num_obstacles);
     bool default_locations = _msg->default_locations;
     std::vector<std::string> obstacle_types = _msg->obstacle_types;
     // Move Existing Objects if the number spawned is the same from last time
-    /*
-    if (move_if_same_number(num_spawn, default_locations)) {
-      gzdbg << "[PLUGIN] Only Moving Obstacle" << std::endl;
-      remove_mutex.unlock();
-      return;
-    } */
+
+//    if (move_if_same_number(num_spawn, default_locations)) {
+//      gzdbg << "[PLUGIN] Only Moving Obstacle" << std::endl;
+//      return;
+//    }
     // To Avoid removing and adding the same object prepend 0 to the number
     // if we have added obstacles before.
     std::string appended_name;
@@ -144,46 +155,89 @@ public:
     }
     //Send remove commands and wait until actual number of models matches expected
     auto expected = WorldModelCount() - added_models.size();
-    while (!added_models.empty()) {
-      gzdbg << "[PLUGIN] Removing " << added_models.back() << std::endl;
-      _parent->RemoveModel(added_models.back());
-      added_models.pop_back();
+    for(const auto & model : added_models){
+      gzdbg << "[PLUGIN] Removing " << model.name << std::endl;
+      _parent->RemoveModel(model.name);
+      gazebo::common::Time::MSleep(100);
     }
-    wait_for_change(static_cast<unsigned int>(expected));
-
+    while (!added_models.empty()) { added_models.pop_back(); }
+    ignition::math::Quaterniond q_rot;
+    auto expected_model_count = expected;
+    long unsigned int models_added;
     if (!default_locations) {
       gzdbg << "[PLUGIN] Adding " << num_spawn << " new obstacles." << std::endl;
-      ignition::math::Quaterniond q_rot;
       q_rot.Axis(ignition::math::Vector3d(0, 0, 1), -M_PI_4);
-      auto expected_model_count = WorldModelCount() + num_spawn;
-      for (int p_i = 0; p_i < num_spawn; ++p_i) {
-        gzdbg << obstacle_types[p_i] << std::endl;
-        std::string obs_name = obstacle_prefix + obstacle_types[p_i] + "_" + (appended_name) + std::to_string(p_i);
-        _parent->InsertModelString(ObstacleFactory::make_obstacle_sdf(
-          sample_track().RotatePositionAboutOrigin(q_rot), obs_name, obstacle_types[p_i]));
-        added_models.push_back(obs_name);
-      }
-      wait_for_change(static_cast<unsigned int>(expected_model_count));
-    } else {
-      auto expected_model_count = WorldModelCount() + default_poses.size();
+      expected_model_count += num_spawn;
+      models_added = num_spawn;
+     } else {
+      expected_model_count += default_poses.size();
+      q_rot.Axis(ignition::math::Vector3d(1, 0, 0), 0);
       gzdbg << "[PLUGIN] Spawning Default Obstacles." << std::endl;
-      for (int p_i = 0; p_i < default_poses.size(); ++p_i) {
-        std::string obs_name = obstacle_prefix + default_obstacle_type + "_" + (appended_name) + std::to_string(p_i);
-        gzdbg << "[PLUGIN] Adding " << obs_name << std::endl;
-        _parent->InsertModelString(ObstacleFactory::make_obstacle_sdf(default_poses[p_i], obs_name,
-                                                                      default_obstacle_type));
-        added_models.push_back(obs_name);
-      }
-      wait_for_change(static_cast<unsigned int>(expected_model_count));
+      models_added = default_poses.size();
     }
-
+    wait_for_change(static_cast<unsigned int>(expected));
+    for (unsigned int p_i = 0; p_i < models_added; ++p_i) {
+      std::string added_type = default_locations ? default_obstacle_type : obstacle_types[p_i];
+      gzdbg << added_type << ": ";
+      safe_obstacle_insert(
+        q_rot,
+        obstacle_prefix + added_type + "_" + (appended_name) + std::to_string(p_i),
+        added_type, default_locations ? p_i : -1);
+      gazebo::common::Time::MSleep(100);
+      gzdbg << added_models.back().name << " at " << added_models.back().pose <<  std::endl;
+    }
+    wait_for_change(static_cast<unsigned int>(expected_model_count));
     autorally_msgs::obstacleStatus status_msg;
     status_msg.header.stamp = ros::Time::now();
     status_msg.num_obstacles = num_spawn;
-    status_msg.obstacle_names = added_models;
+    status_msg.obstacle_names = std::vector<std::string>(added_models.size());
+    for (int m_idx = 0; m_idx < added_models.size(); ++m_idx) {
+      status_msg.obstacle_names[m_idx] = added_models[m_idx].name;
+    }
     obstacle_name_pub_.publish(status_msg);
+    _parent->SetPhysicsEnabled(true);
+    _parent->SetPaused(false);
+  }
 
-    //remove_mutex.unlock();
+  void safe_obstacle_insert(const ignition::math::Quaterniond &frame,
+                            const std::string &obs_name,
+                            const std::string &obs_type,
+                            const int default_idx) {
+    ignition::math::Pose3d pose_added;
+    if(default_idx != -1){
+      gzdbg << "Adding default obstacle with index: " << default_idx << std::endl;
+      pose_added = default_poses[default_idx];
+    }
+    else{
+      ignition::math::Pose3d returns = safe_obstacle_sample(frame);
+      pose_added = returns;
+    }
+    added_models.push_back(ObstacleModel{
+          obs_name, pose_added});
+    _parent->InsertModelString(make_obstacle_sdf(
+      added_models.back().pose,
+      added_models.back().name, obs_type));
+  }
+    ignition::math::Pose3d safe_obstacle_sample(const ignition::math::Quaterniond &frame) {
+    ignition::math::v4::Pose3d returns;
+//    gzdbg << "Sampling Random Pose" << std::endl;
+    const double min_dist = 5;
+    bool pose_is_safe;
+    do{
+        pose_is_safe = true;
+        returns = sample_track().RotatePositionAboutOrigin(frame);
+//        gzdbg << "Sampled the following pose: " << returns << std::endl;
+        for(const auto & model : added_models){
+          double distance = model.pose.Pos().Distance(returns.Pos());
+//          gzdbg << "Distance to previously added obstacle " << model.pose.Pos() << "is : " << distance << std::endl;
+          if(distance < min_dist){
+//            gzdbg << "Distance Threshold Violated. Resampling." << std::endl;
+            pose_is_safe = false;
+            break;
+          }
+        }
+      } while(!pose_is_safe);
+    return returns;
   }
 
   unsigned int WorldModelCount() const {
@@ -198,7 +252,7 @@ public:
   /// \param expected the expected number of elements in the world after waiting
   void wait_for_change(unsigned int expected) {
     while (WorldModelCount() != expected) {
-      gazebo::common::Time::MSleep(10);
+      gazebo::common::Time::MSleep(100);
     }
   }
 
