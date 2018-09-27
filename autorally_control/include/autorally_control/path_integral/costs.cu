@@ -233,8 +233,8 @@ inline void MPPICosts::updateObstacleMap(sensor_msgs::PointCloud2Ptr points)
       for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
         y_delta_sq = pow(y_idx-y,2);
         scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
-        if (obstacle_costs_[y_idx * width_ + x_idx] < 1.*scale) {
-          obstacle_costs_[y_idx * width_ + x_idx] = 1.*scale;
+        if (obstacle_costs_[y_idx * width_ + x_idx] < 1.) {
+          obstacle_costs_[y_idx * width_ + x_idx] = 1.;
         }
       }
     }
@@ -299,14 +299,13 @@ inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
       for (int y_idx = y_range_min; y_idx <= y_range_max; y_idx++) {
         y_delta_sq = pow(y_idx-y,2);
         scale = max((1 - sqrt((float) x_delta_sq + (float) y_delta_sq)*inv_obstacle_pad), 0.0);
-        if (track_costs_[y_idx * width_ + x_idx] < 1.*scale) {
-          track_costs_[y_idx * width_ + x_idx] = 1.*scale;
+        if (track_costs_[y_idx * width_ + x_idx] < 1.) {
+          track_costs_[y_idx * width_ + x_idx] = 1.;
         }
       }
     }
   }
 
-    /*
   for (int i=0; i<width_*height_; i++)
   {
     if (map_track_costs_[i] < 10.)
@@ -318,7 +317,7 @@ inline void MPPICosts::updateTrackMap(sensor_msgs::PointCloud2Ptr points)
         track_costs_[i] = 0.5;
       }
     }
-  }*/
+  }
 
   //Transfer from CPU to GPU
   HANDLE_ERROR( cudaMemcpyToArray(costmapArray_d_, 0, 0, track_costs_.data(), width_*height_*sizeof(float),
