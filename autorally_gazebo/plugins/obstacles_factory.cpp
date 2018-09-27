@@ -25,7 +25,8 @@
 
 namespace gazebo {
 class ObstacleFactory : public WorldPlugin {
-
+  // Car is about 44cm wide from the cad so about three times that seems reasonable.
+  static constexpr double min_dist = 1.5;
   const std::string obstacle_prefix = "obstacle_";
   const std::string default_obstacle_type = "construction_cone";
   const std::vector<ignition::math::Pose3d> default_poses{
@@ -84,6 +85,7 @@ public:
       return;
     }
     gzdbg << "[PLUGIN] spawn_obstacles loaded correctly" << std::endl;
+    gzdbg << "[PLUGIN] Min Distance between obstacles set to: " << min_dist << std::endl;
     rosNode = std::unique_ptr<ros::NodeHandle>(new ros::NodeHandle("obstacle_factory"));
     gzdbg << "[PLUGIN] rosnode created" << std::endl;
     ros::SubscribeOptions sub_options = ros::SubscribeOptions::create<autorally_msgs::spawnObstacles>(
@@ -225,7 +227,6 @@ public:
     ignition::math::Pose3d safe_obstacle_sample(const ignition::math::Quaterniond &frame) {
     ignition::math::Pose3d returns;
 //    gzdbg << "Sampling Random Pose" << std::endl;
-    const double min_dist = 5;
     bool pose_is_safe;
     do{
         pose_is_safe = true;
