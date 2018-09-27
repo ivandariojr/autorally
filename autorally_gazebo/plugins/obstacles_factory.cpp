@@ -123,7 +123,9 @@ public:
 
   void spawn_obstacles(const autorally_msgs::spawnObstaclesConstPtr &_msg) {
     _parent->SetPaused(true);
+#ifdef GAZEBO_9
     _parent->SetPhysicsEnabled(false);
+#endif
 
     //Change Seed
     //if (ignition::math::Rand::Seed() != _msg->seed || _msg->reseed) {
@@ -195,7 +197,9 @@ public:
       status_msg.obstacle_names[m_idx] = added_models[m_idx].name;
     }
     obstacle_name_pub_.publish(status_msg);
+#ifdef GAZEBO_9
     _parent->SetPhysicsEnabled(true);
+#endif
     _parent->SetPaused(false);
   }
 
@@ -219,7 +223,7 @@ public:
       added_models.back().name, obs_type));
   }
     ignition::math::Pose3d safe_obstacle_sample(const ignition::math::Quaterniond &frame) {
-    ignition::math::v4::Pose3d returns;
+    ignition::math::Pose3d returns;
 //    gzdbg << "Sampling Random Pose" << std::endl;
     const double min_dist = 5;
     bool pose_is_safe;
