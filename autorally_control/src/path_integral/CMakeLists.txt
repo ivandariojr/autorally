@@ -2,38 +2,20 @@ cmake_minimum_required(VERSION 2.8.3)
 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(PCL REQUIRED)
-find_package(Boost REQUIRED)
 
 set_directory_properties( PROPERTIES COMPILE_DEFINITIONS "" )
 
 include_directories(include ${OpenCV_INCLUDE_DIRS})
 include_directories(include ${EIGEN_INCLUDE_DIRS})
-include_directories(include ${PCL_INCLUDE_DIRS})
-include_directories(include ${Boost_INCLUDE_DIR})
 
 ################################################################################
 #First make the helper libraries
 ################################################################################
 add_library(autorally_plant autorally_plant.cpp)
-add_dependencies(autorally_plant ${catkin_LIBRARIES})
-
-install(TARGETS
-  autorally_plant
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+target_link_libraries(autorally_plant ${catkin_LIBRARIES})
 
 add_library(param_getter param_getter.cpp)
-add_dependencies(param_getter ${catkin_LIBRARIES})
-
-install(TARGETS
-  param_getter
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+target_link_libraries(param_getter ${catkin_LIBRARIES})
 
 ################################################################################
 #Now build the CUDA executables (only if CUDA is installed)
@@ -56,7 +38,6 @@ set(
 	-w
 )
 
-
 ####################################################################################
 #Executable for the basis function model
 ####################################################################################
@@ -67,9 +48,9 @@ cuda_add_executable(path_integral_bf
                     param_getter
                     )
 target_compile_definitions(path_integral_bf PRIVATE PRIVATE USE_BASIS_FUNC_MODEL__)
-add_dependencies(path_integral_bf autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
+add_dependencies(path_integral_bf autorally_msgs_gencpp ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(path_integral_bf /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(path_integral_bf /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 ###################################################################################
 #Executable for the neural network model
@@ -83,9 +64,9 @@ cuda_add_executable(path_integral_nn
 target_compile_definitions(path_integral_nn PRIVATE
 		USE_NEURAL_NETWORK_MODEL__;
 		MPPI_NNET_USING_CONSTANT_MEM__)
-add_dependencies(path_integral_nn autorally_msgs_gencpp autorally_core ${PROJECT_NAME}_gencfg)
+add_dependencies(path_integral_nn autorally_msgs_gencpp ${PROJECT_NAME}_gencfg)
 
-target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_LIBRARY} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 ####################################################################################
 #Executable for monitoring the status of mppi
@@ -93,9 +74,7 @@ target_link_libraries(path_integral_nn /usr/local/lib/libcnpy.so ${CUDA_curand_L
 
 add_executable(path_integral_monitor
 			   status_monitor.cpp)
-
-add_dependencies(path_integral_monitor autorally_core autorally_msgs_gencpp)
-
+add_dependencies(path_integral_monitor autorally_msgs_gencpp)
 target_link_libraries(path_integral_monitor ${catkin_LIBRARIES})
 
 endif(CUDA_FOUND)

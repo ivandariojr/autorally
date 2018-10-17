@@ -10,7 +10,7 @@ from geometry_msgs.msg import Quaternion
 from sensor_msgs.msg import Imu
 from nav_msgs.msg import Odometry
 from autorally_msgs.msg import chassisState, runstop
-from autorally_msgs.msg import pathIntegralStats, resetObstacles
+from autorally_msgs.msg import pathIntegralStats
 
 #Slope, Offset, X min, X max
 gazebo_line = [1.0, 5.0, -13, -9]
@@ -61,14 +61,11 @@ class Lap:
 		self.lap_time = 0
 		self.max_speed = 0
 		self.max_slip = 0
-		self.avg_speed = 0
 		self.lap_number = 1
-		self.n_poses = 0
 		self.params = params
 		self.prefix = prefix
 		self.pub = rospy.Publisher('lap_stats', pathIntegralStats, queue_size = 1)
-		rospy.Subscriber('obstacle_reset', resetObstacles, self.reset_callback)
-		rospy.Subscriber("/pose_estimate", Odometry, self.process_pose)
+		rospy.Subscriber("/mppi_controller/subscribedPose", Odometry, self.process_pose)
 
 	def reset_lap(self):
 		self.last_eval = 0
@@ -77,14 +74,7 @@ class Lap:
 		self.lap_time = 0
 		self.max_speed = 0
 		self.max_slip = 0
-		self.avg_speed = 0
-		self.n_poses = 0
 		self.lap_number += 1
-
-	def reset_callback(self, msg):
-		if msg.reset:
-			self.reset_lap()
-			self.lap_number = 0
 
 	def publish_msg(self):
 		msg = pathIntegralStats()
@@ -111,7 +101,6 @@ class Lap:
 		msg.stats.lap_time = self.lap_time
 		msg.stats.max_speed = self.max_speed
 		msg.stats.max_slip = self.max_slip
-		msg.stats.avg_speed = self.avg_speed
 		self.pub.publish(msg)
 
 	def process_pose(self, pose_msg):
@@ -119,20 +108,12 @@ class Lap:
 		x = pose_msg.pose.pose.position.x
 		y = pose_msg.pose.pose.position.y
 		z = pose_msg.pose.pose.position.z
-		x_dot = pose_msg.twist.twist.linear.x
-		y_dot = pose_msg.twist.twist.linear.y
-		r,p,ya = convert_quat_to_euler(pose_msg.pose.pose.orientation)
-		vel_wf = np.array([x_dot, y_dot])
-		rot_mat = np.array([[np.cos(ya), np.sin(ya)], [-np.sin(ya), np.cos(ya)]])
-		vel_bf = np.dot(rot_mat, vel_wf)
-		v_x = vel_bf[0]
-		v_y = vel_bf[1]
+		v_x = pose_msg.twist.twist.linear.x
+		v_y = pose_msg.twist.twist.linear.y
 		#Process the pose to get statistics
 		total_v = (v_x**2 + v_y**2)**.5
 		if (total_v > self.max_speed):
 			self.max_speed = total_v
-		self.avg_speed = (self.avg_speed*self.n_poses + total_v)/(self.n_poses+1)
-		self.n_poses += 1
 		slip = 0
 		if (v_x > 0.1):
 			slip = -np.arctan(v_y/np.abs(v_x))
