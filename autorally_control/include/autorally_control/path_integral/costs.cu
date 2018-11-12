@@ -43,6 +43,7 @@ inline MPPICosts::MPPICosts(int width, int height)
   width_ = width;
   height_ = height;
   allocateTexMem();
+  latest_cost_ = 0;
   //Initialize memory for device cost param struct
   HANDLE_ERROR( cudaMalloc((void**)&params_d_, sizeof(CostParams)) );
   debugging_ = false;
@@ -437,6 +438,7 @@ inline void MPPICosts::debugDisplay(float x, float y)
   //Now we just have to display debug_data_d_
   HANDLE_ERROR( cudaMemcpy(debug_data_, debug_data_d_, debug_img_size_*sizeof(float), cudaMemcpyDeviceToHost) );
   debug_img_ = cv::Mat(debug_img_width_*debug_img_ppm_, debug_img_height_*debug_img_ppm_, CV_32F, debug_data_);
+  latest_cost_ = debug_img_.at<float>(debug_img_width_*debug_img_ppm_/2, debug_img_height_*debug_img_ppm_/2);
   cv::namedWindow("debugImage", cv::WINDOW_AUTOSIZE);
   cv::imshow("debugImage", debug_img_);
   cv::waitKey(1);

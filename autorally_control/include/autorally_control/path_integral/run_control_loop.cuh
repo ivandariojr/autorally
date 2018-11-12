@@ -92,6 +92,7 @@ void runControlLoop(CONTROLLER_T controller, SystemParams params, ros::NodeHandl
 
     if (params.debug_mode){ //Display the debug window.
      controller.costs_->debugDisplay(state(0), state(1));
+     robot.pubCost(controller.costs_->latest_cost_);
     }
     
     if (last_pose_update != robot.getLastPoseTime()){ //If we've received a new state estimate

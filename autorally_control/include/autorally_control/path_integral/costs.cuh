@@ -92,6 +92,8 @@ public:
     float3 trs;
   } CostParams;
 
+  float latest_cost_;
+
   CostParams params_; ///< Struct for cost parameters.
 
   /**

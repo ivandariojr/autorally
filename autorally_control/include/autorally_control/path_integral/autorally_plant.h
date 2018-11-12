@@ -50,6 +50,7 @@
 #include <autorally_msgs/runstop.h>
 #include <autorally_msgs/pathIntegralStatus.h>
 #include <autorally_msgs/resetObstacles.h>
+#include <autorally_msgs/mppiCost.h>
 
 #include <eigen3/Eigen/Dense>
 
@@ -157,6 +158,8 @@ public:
 
   void pubStatus();
 
+  void pubCost(float cost);
+
   /**
   * @brief Returns the current state of the system.
   */
@@ -231,6 +234,7 @@ private:
   ros::Publisher status_pub_; ///< Publishes the status (0 good, 1 neutral, 2 bad) of the controller
   ros::Publisher delay_pub_; ///< Publisher of geometry::msgs::Point on topic mppiTimeDelay.
   ros::Publisher default_path_pub_; ///< Publisher of nav_mags::Path on topic nominalPath.
+  ros::Publisher cost_pub_;
   ros::Subscriber pose_sub_; ///< Subscriber to /pose_estimate.
   ros::Subscriber servo_sub_;
   ros::Subscriber points_sub_; ///< Subscriber to /stereo/filtered_points2.
@@ -246,6 +250,7 @@ private:
   nav_msgs::Path path_msg_; ///< Path message for publishing the planned path.
   geometry_msgs::Point time_delay_msg_; ///< Point message for publishing the observed delay.
   autorally_msgs::pathIntegralStatus status_msg_; ///<pathIntegralStatus message for publishing mppi status
+  autorally_msgs::mppiCost cost_msg_;
   std::vector<float> model_params_; ///< Array for holding the updated model parameters
 
 };

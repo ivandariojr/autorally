@@ -53,6 +53,7 @@ AutorallyPlant::AutorallyPlant(ros::NodeHandle mppi_node, bool debug_mode, int h
   default_path_pub_ = mppi_node.advertise<nav_msgs::Path>(nominal_path_name, 1);
   delay_pub_ = mppi_node.advertise<geometry_msgs::Point>("mppiTimeDelay", 1);
   status_pub_ = mppi_node.advertise<autorally_msgs::pathIntegralStatus>("mppiStatus", 1);
+  cost_pub_ = mppi_node.advertise<autorally_msgs::mppiCost>("mppiCost", 1);
   //Initialize the pose subscriber.
   pose_sub_ = mppi_node.subscribe(pose_estimate_name, 1, &AutorallyPlant::poseCall, this);
   //Initialize the servo subscriber
@@ -237,6 +238,13 @@ void AutorallyPlant::pubStatus(){
   status_msg_.status = status_;
   status_msg_.header.stamp = ros::Time::now();
   status_pub_.publish(status_msg_);
+}
+
+void AutorallyPlant::pubCost(float cost)
+{
+  cost_msg_.header.stamp = ros::Time::now();
+  cost_msg_.cost = cost;
+  cost_pub_.publish(cost_msg_);
 }
 
 AutorallyPlant::FullState AutorallyPlant::getState()
