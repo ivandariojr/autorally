@@ -16,6 +16,7 @@ add_message_files(
   FILES
   chassisCommand.msg
   chassisState.msg
+  learnerState.msg
   mppiCost.msg
   wheelSpeeds.msg
   runstop.msg
